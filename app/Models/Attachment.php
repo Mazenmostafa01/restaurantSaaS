@@ -8,14 +8,12 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Attachment extends Model
 {
-    use SoftDeletes;
-
     protected $fillable = [
         'path', 'filename', 'disk', 'mime_type', 'filesize',
         'position', 'is_primary',
     ];
 
-    public function model(): MorphTo
+    public function attachment(): MorphTo
     {
         return $this->morphTo();
     }

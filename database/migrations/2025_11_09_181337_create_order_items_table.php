@@ -19,7 +19,6 @@ return new class extends Migration
             $table->foreignIdFor(Item::class)->nullable()->constrained()->nullOnDelete();
             $table->integer('quantity');
             $table->timestamps();
-            $table->softDeletes();
             // Prevent duplicate items in the same order (if needed)
             $table->unique(['order_id', 'item_id']);
         });
