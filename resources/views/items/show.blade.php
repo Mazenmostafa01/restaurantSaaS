@@ -5,6 +5,7 @@
     <div class="flex items-start justify-between">
         <h1 class="text-2xl font-bold">{{ $item->name }}</h1>
         <div class="space-x-2">
+            <a href="{{ route('items.edit', $item->id) }}">Edit</a>
             <form action="{{ route('items.delete', $item->id) }}" method="POST" class="inline">
                 @csrf
                 @method('DELETE')
@@ -23,7 +24,7 @@
         </div>
 
         <div class="col-span-2">
-            <p class="text-lg font-semibold">Price: <span class="text-gray-700">{{ number_format($item->price, 2) }}</span></p>
+            <p class="text-lg font-semibold">Price: <span class="text-gray-700">{{ number_format($item->price, 2) }} EGP</span></p>
             <p class="mt-2">Category: <strong>{{ $item->category }}</strong></p>
             <p class="mt-4 text-gray-700">{{ $item->description }}</p>
             <p class="mt-4 text-sm text-gray-500">Created: {{ $item->created_at->diffForHumans() }}</p>

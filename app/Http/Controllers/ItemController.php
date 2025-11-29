@@ -2,25 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ItemCategoryEnum;
+use App\Http\Requests\AddItemRequest;
+use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ItemController extends Controller
 {
     public function create()
     {
-        return view('items.create');
+        $categories = ItemCategoryEnum::cases();
+
+        return view('items.create', compact('categories'));
     }
 
-    public function store(Request $request)
+    public function store(AddItemRequest $request)
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'unique:items,name', 'max:100'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'category' => ['required', 'in:food,beverage'],
-            'description' => ['nullable', 'string'],
-        ]);
 
         DB::beginTransaction();
         try {
@@ -37,7 +36,7 @@ class ItemController extends Controller
             DB::rollBack();
             info('error', [$e]);
 
-            return back()->withErrors(['error' => 'Failed to create item.']);
+            return back()->with('error', 'Failed to create item.');
         }
     }
 
@@ -46,9 +45,32 @@ class ItemController extends Controller
         return view('items.show', compact('item'));
     }
 
-    public function edit() {}
+    public function edit(Item $item)
+    {
+        return view('items.edit', compact('item'));
+    }
 
-    public function update() {}
+    public function update(UpdateItemRequest $request, Item $item)
+    {
+        DB::beginTransaction();
+        try {
+            $item->update(
+                [
+                    'name' => $request->name,
+                    'price' => $request->price,
+                    'category' => $request->category,
+                    'description' => $request->description ?? null,
+                ]);
+            DB::commit();
+
+            return redirect()->route('items.edit', $item->id)->with('success', 'item updated successfully.');
+        } catch (\Exception $e) {
+            Log::info('item update error', $e);
+            DB::rollBack();
+
+            return back()->with('error', 'failed to update item.');
+        }
+    }
 
     public function delete(Item $item)
     {
@@ -61,7 +83,8 @@ class ItemController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             info('delete.item.error', ['error' => $e->getMessage()]);
-            return back()->withErrors(['error' => 'Failed to delete item.']);
+
+            return back()->with('error', 'Failed to delete item.');
         }
     }
 }
