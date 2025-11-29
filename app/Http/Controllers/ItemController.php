@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ItemCategoryEnum;
+use App\Events\ItemUpdateEvent;
 use App\Http\Requests\AddItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
@@ -62,10 +63,11 @@ class ItemController extends Controller
                     'description' => $request->description ?? null,
                 ]);
             DB::commit();
+            event(new ItemUpdateEvent($item));
 
             return redirect()->route('items.edit', $item->id)->with('success', 'item updated successfully.');
         } catch (\Exception $e) {
-            Log::info('item update error', $e);
+            Log::info('item update error', [$e]);
             DB::rollBack();
 
             return back()->with('error', 'failed to update item.');
