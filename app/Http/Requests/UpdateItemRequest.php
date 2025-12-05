@@ -29,6 +29,10 @@ class UpdateItemRequest extends FormRequest
             'price' => ['required', 'numeric', 'min:0'],
             'category' => ['required', new Enum(ItemCategoryEnum::class)],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'array', 'max:5'],
+            'images.*' => ['image', 'mimes:jpg,png,jpeg', 'max:1024'],
+            'deleted_images' => ['nullable', 'array'],
+            'deleted_images.*' => ['integer', 'exists:attachments,id']
         ];
     }
 }

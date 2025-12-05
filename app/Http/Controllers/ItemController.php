@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
@@ -30,6 +31,22 @@ class ItemController extends Controller
             $item->category = $request->category;
             $item->description = $request->description ?? null;
             $item->save();
+
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $position => $image) {
+                    $path = Storage::disk('public')->put('/images', $image);
+
+                    $item->attachments()->create([
+                        'path' => $path,
+                        'filename' => str_replace('images/', '', $path),
+                        'disk' => 'public',
+                        'mime_type' => $image->getMimeType(),
+                        'filesize' => $image->getSize(),
+                        'position' => $position,
+                        'is_primary' => $position === 0,
+                    ]);
+                }
+            }
             DB::commit();
 
             return redirect()->route('items.create')->with('success', 'Item created successfully!');
@@ -43,12 +60,16 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
-        return view('items.show', compact('item'));
+        $attachments = $item->attachments->map->url();
+
+        return view('items.show', compact('item', 'attachments'));
     }
 
     public function edit(Item $item)
     {
-        return view('items.edit', compact('item'));
+        $attachments = $item->attachments->map->url();
+
+        return view('items.edit', compact('item', 'attachments'));
     }
 
     public function update(UpdateItemRequest $request, Item $item)
@@ -62,6 +83,30 @@ class ItemController extends Controller
                     'category' => $request->category,
                     'description' => $request->description ?? null,
                 ]);
+
+            if ($request->filled('delete_images')) {
+                foreach ($request->delete_images as $id) {
+                    $attachment = $item->attachments()->find($id);
+                    if ($attachment) {
+                        Storage::disk($attachment->disk)->delete($attachment->path);
+                        $attachment->delete();
+                    }
+                }
+            }
+
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $position => $image) {
+                    $path = Storage::disk('public')->put('/images', $image);
+
+                    $item->attachments()->create([
+                        'path' => $path,
+                        'filename' => str_replace('images/', '', $path),
+                        'disk' => 'public',
+                        'mime_type' => $image->getMimeType(),
+                        'filesize' => $image->getSize(),
+                    ]);
+                }
+            }
             DB::commit();
             event(new ItemUpdateEvent($item));
 
