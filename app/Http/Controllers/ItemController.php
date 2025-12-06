@@ -13,6 +13,13 @@ use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
+    public function index()
+    {
+        $items = Item::withTrashed()->with('attachments')->get();
+
+        return view('items.index', compact('items'));
+    }
+
     public function create()
     {
         $categories = ItemCategoryEnum::cases();
@@ -69,6 +76,7 @@ class ItemController extends Controller
     {
         $attachments = $item->attachments->map->url();
         $categories = ItemCategoryEnum::cases();
+
         return view('items.edit', compact('item', 'attachments', 'categories'));
     }
 
@@ -110,7 +118,7 @@ class ItemController extends Controller
             DB::commit();
             event(new ItemUpdateEvent($item));
 
-            return redirect()->route('items.edit', $item->id)->with('success', 'item updated successfully.');
+            return redirect()->route('items.index')->with('success', 'item updated successfully.');
         } catch (\Exception $e) {
             Log::info('item update error', [$e]);
             DB::rollBack();
@@ -126,12 +134,30 @@ class ItemController extends Controller
             $item->delete();
             DB::commit();
 
-            return redirect()->route('items.create')->with('success', 'Item deleted');
+            return redirect()->route('items.index')->with('success', 'Item removed.');
         } catch (\Exception $e) {
             DB::rollBack();
             info('delete.item.error', ['error' => $e->getMessage()]);
 
             return back()->with('error', 'Failed to delete item.');
+        }
+    }
+
+    public function restore($item)
+    {
+        try {
+            $trashedItem = Item::withTrashed()->find($item);
+            if ($trashedItem) {
+                $trashedItem->restore();
+
+                return redirect()->route('items.index')->with('success', 'item restored.');
+            }
+
+            return back()->with('error', 'Failed to restore item.');
+        } catch (\Exception $e) {
+            info('delete.item.error', ['error' => $e->getMessage()]);
+
+            return back()->with('error', 'Failed to restore item.');
         }
     }
 }
