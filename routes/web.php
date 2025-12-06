@@ -1,19 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ItemController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/', function() {
-    return view('welcome');
-})->name('home');
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('loginPost');
 
-Route::prefix('items')->name('items.')->group(function() {
-    Route::get('/index', [ItemController::class, 'index'])->name('index');
-    Route::get('/create', [ItemController::class, 'create'])->name('create');
-    Route::post('/items', [ItemController::class, 'store'])->name('store');
-    Route::get('/show/{item}', [ItemController::class, 'show'])->name('show');
-    Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
-    Route::put('/{item}', [ItemController::class, 'update'])->name('update');
-    Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
-    Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/', function () {
+        return view('welcome');
+    })->name('home');
+
+    Route::prefix('items')->name('items.')->group(function () {
+        Route::get('/index', [ItemController::class, 'index'])->name('index');
+        Route::get('/create', [ItemController::class, 'create'])->name('create');
+        Route::post('/items', [ItemController::class, 'store'])->name('store');
+        Route::get('/show/{item}', [ItemController::class, 'show'])->name('show');
+        Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
+        Route::put('/{item}', [ItemController::class, 'update'])->name('update');
+        Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
+        Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+    });
 });

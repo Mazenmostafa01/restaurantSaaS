@@ -32,6 +32,14 @@
                 </li>
             </ul>
         </div>
+        <div class="fixed bottom-4 m-1 mx-5" style="width: 13rem;">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="p-3 bg-blue-800 text-white rounded-lg shadow-lg w-full">
+                    Logout
+                </button>
+            </form>
+        </div>
     </aside>
 
     <div class="container mx-auto py-8">
