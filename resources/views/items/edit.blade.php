@@ -30,8 +30,12 @@
             <label for="category" class="block text-gray-700 font-semibold mb-2">Category</label>
             <select name="category" id="category" class="w-full border rounded px-3 py-2">
                 <option value="">Select category</option>
-                <option value="food" {{ old('category', $item->category) == 'food' ? 'selected' : '' }}>Food</option>
-                <option value="beverage" {{ old('category', $item->category) == 'beverage' ? 'selected' : '' }}>Beverage</option>
+                    @if(!empty($categories))
+                        @foreach($categories as $category)
+                            <option value="{{ $category->value }}" {{ old('category', $item->category) == $category->value ? 'selected' : '' }}>
+                                {{ ucfirst($category->value) }}</option>
+                        @endforeach
+                    @endif
             </select>
             @error('category')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
         </div>

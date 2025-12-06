@@ -68,8 +68,8 @@ class ItemController extends Controller
     public function edit(Item $item)
     {
         $attachments = $item->attachments->map->url();
-
-        return view('items.edit', compact('item', 'attachments'));
+        $categories = ItemCategoryEnum::cases();
+        return view('items.edit', compact('item', 'attachments', 'categories'));
     }
 
     public function update(UpdateItemRequest $request, Item $item)
