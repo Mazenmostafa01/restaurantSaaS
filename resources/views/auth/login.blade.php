@@ -144,10 +144,7 @@
                                 <input type="checkbox" 
                                     id="remember" 
                                     name="remember"
-                                    class="hidden checkbox-blue">
-                                <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition duration-200" id="customCheckbox">
-                                    <i class="fas fa-check text-white text-xs hidden"></i>
-                                </div>
+                                    class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition duration-200" id="customCheckbox">
                             </div>
                             <span class="ml-3 text-gray-700">Remember me</span>
                         </label>

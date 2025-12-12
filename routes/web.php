@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -22,5 +23,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/{item}', [ItemController::class, 'update'])->name('update');
         Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
         Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+    });
+
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/create', [OrderController::class, 'create'])->name('create');
+        Route::post('/orders', [OrderController::class, 'store'])->name('store');
     });
 });

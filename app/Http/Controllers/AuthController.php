@@ -10,6 +10,10 @@ class AuthController extends Controller
     // Show login form
     public function showLoginForm()
     {
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
         return view('auth.login');
     }
 
@@ -21,7 +25,7 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
         $remember = $request->has('remember');
-        
+
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
 

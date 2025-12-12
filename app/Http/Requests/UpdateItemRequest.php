@@ -32,7 +32,7 @@ class UpdateItemRequest extends FormRequest
             'image' => ['nullable', 'array', 'max:5'],
             'images.*' => ['image', 'mimes:jpg,png,jpeg', 'max:1024'],
             'deleted_images' => ['nullable', 'array'],
-            'deleted_images.*' => ['integer', 'exists:attachments,id']
+            'deleted_images.*' => ['integer', 'exists:attachments,id'],
         ];
     }
 }

@@ -17,14 +17,14 @@ class ItemController extends Controller
     {
         $items = Item::withTrashed()->with('attachments')->get();
 
-        return view('items.index', compact('items'));
+        return view('admin.items.index', compact('items'));
     }
 
     public function create()
     {
         $categories = ItemCategoryEnum::cases();
 
-        return view('items.create', compact('categories'));
+        return view('admin.items.create', compact('categories'));
     }
 
     public function store(AddItemRequest $request)
@@ -69,7 +69,7 @@ class ItemController extends Controller
     {
         $attachments = $item->attachments->map->url();
 
-        return view('items.show', compact('item', 'attachments'));
+        return view('admin.items.show', compact('item', 'attachments'));
     }
 
     public function edit(Item $item)
@@ -77,7 +77,7 @@ class ItemController extends Controller
         $attachments = $item->attachments->map->url();
         $categories = ItemCategoryEnum::cases();
 
-        return view('items.edit', compact('item', 'attachments', 'categories'));
+        return view('admin.items.edit', compact('item', 'attachments', 'categories'));
     }
 
     public function update(UpdateItemRequest $request, Item $item)
