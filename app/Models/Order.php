@@ -11,7 +11,7 @@ class Order extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['order_number', 'price', 'tax', 'net', 'note', 'user_id', 'customer_id'];
+    protected $fillable = ['order_number', 'price', 'tax', 'net', 'type', 'note', 'user_id', 'customer_id'];
 
     public function customer(): BelongsTo
     {

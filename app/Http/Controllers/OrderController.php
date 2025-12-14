@@ -9,11 +9,18 @@ use App\Models\Item;
 use App\Models\Order;
 use App\Traits\Calculation;
 use Illuminate\Support\Facades\DB;
-use Laravel\Reverb\Loggers\Log;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
     use Calculation;
+
+    public function index()
+    {
+        $orders = Order::get();
+
+        return view('admin.orders.index', compact('orders'));
+    }
 
     public function create()
     {
@@ -34,7 +41,6 @@ class OrderController extends Controller
             foreach ($request['items'] as $itemId => $itemValues) {
                 $item = Item::findOrFail($itemId);
                 $subTotal += $this->subTotal($item->price, $itemValues['quantity']);
-
                 $orderDetails[$itemId] = [
                     'quantity' => $itemValues['quantity'],
                 ];
@@ -42,14 +48,20 @@ class OrderController extends Controller
             $tax = $this->tax($subTotal);
             $netTotal = $subTotal + $tax;
 
-            Order::create([
+            $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'price' => $subTotal,
                 'tax' => $tax,
                 'net' => $netTotal,
                 'type' => $request['type'],
                 'note' => $request['note'] ?? null,
+                'user_id' => auth()->user()->id,
+                'customer_id' => $request['customer_id'] ?? null,
             ]);
+
+            foreach ($orderDetails as $itemId => $detail) {
+                $order->items()->attach($itemId, ['quantity' => $detail['quantity']]);
+            }
 
             DB::commit();
 
@@ -68,6 +80,21 @@ class OrderController extends Controller
     public function edit() {}
 
     public function update() {}
+
+    public function delete(Order $order)
+    {
+        DB::beginTransaction();
+        try {
+            $order->items()->detach();
+            $order->delete();
+            DB::commit();
+            return redirect()->route('orders.index');
+        } catch (\Exception $e) {
+            Log::info('delete order error', [$e]);
+
+            return back()->with('error', 'Failed to delete order.');
+        }
+    }
 
     private function generateOrderNumber()
     {

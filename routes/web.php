@@ -26,7 +26,9 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/index', [OrderController::class, 'index'])->name('index');
         Route::get('/create', [OrderController::class, 'create'])->name('create');
         Route::post('/orders', [OrderController::class, 'store'])->name('store');
+        Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
     });
 });
