@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\ItemCategoryEnum;
 use App\Enums\OrderTypeEnum;
 use App\Http\Requests\OrderCreateRequest;
+use App\Http\Requests\OrderUpdateRequest;
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Traits\Calculation;
@@ -24,11 +26,12 @@ class OrderController extends Controller
 
     public function create()
     {
-        $items = Item::withoutTrashed()->get();
+        $items = Item::get();
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
+        $customers = Customer::select('id', 'name')->get();
 
-        return view('admin.orders.create', compact('items', 'categories', 'orderType'));
+        return view('admin.orders.create', compact('items', 'categories', 'orderType', 'customers'));
     }
 
     public function store(OrderCreateRequest $request)
@@ -75,11 +78,55 @@ class OrderController extends Controller
         }
     }
 
-    public function show() {}
+    public function edit(Order $order)
+    {
+        $customers = Customer::select('id', 'name')->get();
+        $orderType = OrderTypeEnum::cases();
+        $items = Item::get();
 
-    public function edit() {}
+        return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items'));
+    }
 
-    public function update() {}
+    public function update(OrderUpdateRequest $request, Order $order)
+    {
+        $request = $request->validated();
+        $subTotal = 0;
+        $orderDetails = [];
+        DB::beginTransaction();
+        try {
+            foreach ($request['items'] as $itemId => $itemValues) {
+                $item = Item::findOrFail($itemId);
+                $subTotal += $this->subTotal($item->price, $itemValues['quantity']);
+                $orderDetails[$itemId] = [
+                    'quantity' => $itemValues['quantity'],
+                ];
+            }
+            $tax = $this->tax($subTotal);
+            $netTotal = $subTotal + $tax;
+
+            $order->update([
+                'price' => $subTotal,
+                'tax' => $tax,
+                'net' => $netTotal,
+                'type' => $request['type'],
+                'note' => $request['note'] ?? null,
+                'user_id' => auth()->user()->id,
+                'customer_id' => $request['customer_id'] ?? null,
+            ]);
+
+            $order->items()->sync($orderDetails);
+
+            DB::commit();
+
+            return redirect()->route('orders.index');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::info('order create error', [$e]);
+
+            return back()->with('error', 'Failed to create order.');
+        }
+    }
 
     public function delete(Order $order)
     {
@@ -88,6 +135,7 @@ class OrderController extends Controller
             $order->items()->detach();
             $order->delete();
             DB::commit();
+
             return redirect()->route('orders.index');
         } catch (\Exception $e) {
             Log::info('delete order error', [$e]);

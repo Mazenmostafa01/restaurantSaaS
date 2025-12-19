@@ -15,7 +15,7 @@ class Item extends Model
 
     public function orders(): BelongsToMany
     {
-        return $this->belongsToMany(Order::class, 'order_items');
+        return $this->belongsToMany(Order::class, 'order_items')->withPivot(['quantity']);
     }
 
     public function attachments(): MorphMany
