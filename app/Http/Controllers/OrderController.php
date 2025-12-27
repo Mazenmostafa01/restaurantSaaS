@@ -19,14 +19,14 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::get();
+        $orders = Order::orderBy('created_at', 'desc')->get();
 
         return view('admin.orders.index', compact('orders'));
     }
 
     public function create()
     {
-        $items = Item::get();
+        $items = Item::orderBy('category')->get();
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
         $customers = Customer::select('id', 'name')->get();
@@ -82,7 +82,7 @@ class OrderController extends Controller
     {
         $customers = Customer::select('id', 'name')->get();
         $orderType = OrderTypeEnum::cases();
-        $items = Item::get();
+        $items = Item::orderBy('category')->get();
 
         return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items'));
     }

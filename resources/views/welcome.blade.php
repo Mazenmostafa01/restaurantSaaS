@@ -29,7 +29,7 @@
         <div class="bg-neutral-primary-soft border-default h-full overflow-y-auto border-e px-3 py-20">
             <ul class="space-y-2 font-medium">
                 <li>
-                    <a href="{{ route('home') }}"
+                    <a href="{{ route('dashboard') }}"
                         class="text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group flex items-center px-2 py-1.5">
                         <svg class="group-hover:text-fg-brand h-5 w-5 transition duration-75" aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"

@@ -13,7 +13,7 @@
                         <h3 class="truncate text-lg font-semibold text-gray-800">{{ $order->order_number }}</h3>
                         <span
                             class="ml-2 whitespace-nowrap rounded bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                            EGP{{ number_format($order->price, 2) }}
+                            EGP{{ number_format($order->net, 2) }}
                         </span>
                     </div>
 
