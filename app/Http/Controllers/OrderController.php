@@ -92,10 +92,14 @@ class OrderController extends Controller
         $request = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
+        $items = Item::whereIn('id', array_keys($request['items']))->get()->keyBy('id');
         DB::beginTransaction();
         try {
             foreach ($request['items'] as $itemId => $itemValues) {
-                $item = Item::findOrFail($itemId);
+                if (! isset($items[$itemId])) {
+                    continue;
+                }
+                $item = $items[$itemId];
                 $subTotal += $this->subTotal($item->price, $itemValues['quantity']);
                 $orderDetails[$itemId] = [
                     'quantity' => $itemValues['quantity'],
@@ -110,7 +114,7 @@ class OrderController extends Controller
                 'net' => $netTotal,
                 'type' => $request['type'],
                 'note' => $request['note'] ?? null,
-                'user_id' => auth()->user()->id,
+                'user_id' => auth()->id(),
                 'customer_id' => $request['customer_id'] ?? null,
             ]);
 
