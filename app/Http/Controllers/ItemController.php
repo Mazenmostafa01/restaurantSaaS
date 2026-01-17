@@ -32,12 +32,12 @@ class ItemController extends Controller
 
         DB::beginTransaction();
         try {
-            $item = new Item;
-            $item->name = $request->name;
-            $item->price = $request->price;
-            $item->category = $request->category;
-            $item->description = $request->description ?? null;
-            $item->save();
+            $item = Item::create([
+                'name' => $request->name,
+                'price' => $request->price,
+                'category' => $request->category,
+                'description' => $request->description ?? null,
+            ]);
 
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $position => $image) {
@@ -93,12 +93,10 @@ class ItemController extends Controller
                 ]);
 
             if ($request->filled('delete_images')) {
-                foreach ($request->delete_images as $id) {
-                    $attachment = $item->attachments()->find($id);
-                    if ($attachment) {
-                        Storage::disk($attachment->disk)->delete($attachment->path);
-                        $attachment->delete();
-                    }
+                $attachments = $item->attachments()->whereIn('id', $request->delete_images)->get();
+                foreach ($attachments as $attachment) {
+                    Storage::disk($attachment->disk)->delete($attachment->path);
+                    $attachment->delete();
                 }
             }
 
@@ -116,7 +114,9 @@ class ItemController extends Controller
                 }
             }
             DB::commit();
-            event(new ItemUpdateEvent($item));
+            DB::afterCommit(function () use ($item) {
+                event(new ItemUpdateEvent($item));
+            });
 
             return redirect()->route('items.index')->with('success', 'item updated successfully.');
         } catch (\Exception $e) {
@@ -129,35 +129,20 @@ class ItemController extends Controller
 
     public function delete(Item $item)
     {
-        DB::beginTransaction();
-        try {
-            $item->delete();
-            DB::commit();
+        $item->delete();
 
-            return redirect()->route('items.index')->with('success', 'Item removed.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            info('delete.item.error', ['error' => $e->getMessage()]);
-
-            return back()->with('error', 'Failed to delete item.');
-        }
+        return redirect()->route('items.index')->with('success', 'Item removed.');
     }
 
     public function restore($item)
     {
-        try {
-            $trashedItem = Item::withTrashed()->find($item);
-            if ($trashedItem) {
-                $trashedItem->restore();
+        $trashedItem = Item::withTrashed()->find($item);
+        if ($trashedItem) {
+            $trashedItem->restore();
 
-                return redirect()->route('items.index')->with('success', 'item restored.');
-            }
-
-            return back()->with('error', 'Failed to restore item.');
-        } catch (\Exception $e) {
-            info('delete.item.error', ['error' => $e->getMessage()]);
-
-            return back()->with('error', 'Failed to restore item.');
+            return redirect()->route('items.index')->with('success', 'item restored.');
         }
+
+        return back()->with('error', 'Failed to restore item.');
     }
 }
