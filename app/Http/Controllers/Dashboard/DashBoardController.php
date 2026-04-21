@@ -10,7 +10,6 @@ class DashBoardController extends Controller
 {
     public function __invoke()
     {
-        dd(app());
         $orders = Order::selectRaw('SUM(net) as total_sales, SUM(tax) as tax, COUNT(*) as total_orders')
             ->whereBetween('created_at', [now()->startOfYear(), now()])->first();
 

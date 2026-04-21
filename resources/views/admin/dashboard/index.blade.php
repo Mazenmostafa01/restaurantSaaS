@@ -4,8 +4,8 @@
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <!-- Page Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-            <p class="mt-1 text-gray-600">Overview of restaurant performance and analytics</p>
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600 tracking-tight pb-1">Admin Dashboard</h1>
+            <p class="mt-2 text-sm font-medium text-gray-500">Overview of restaurant performance and analytics</p>
         </div>
 
         <!-- Date Range Selector -->

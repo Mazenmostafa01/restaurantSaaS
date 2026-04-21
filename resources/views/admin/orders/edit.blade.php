@@ -1,20 +1,20 @@
 @extends('welcome')
 
 @section('content')
-    <div class="mx-auto mt-10 max-w-4xl rounded bg-white p-8 shadow">
-        <h2 class="mb-6 text-3xl font-bold">Edit Order</h2>
+    <div class="mx-auto mt-10 max-w-5xl rounded-2xl bg-white p-8 sm:p-12 shadow-xl ring-1 ring-gray-900/5">
+        <h2 class="mb-8 text-3xl font-extrabold text-gray-900 tracking-tight">Edit Order #{{ $order->order_number }}</h2>
 
         <form method="POST" action="{{ route('orders.update', $order->id) }}" id="orderForm">
             @csrf
             @method('PUT')
 
             <!-- Customer Info -->
-            <div class="mb-6 rounded bg-gray-50 p-4">
-                <h3 class="mb-4 text-lg font-semibold">Customer Info</h3>
-                <div class="grid grid-cols-2 gap-4">
+            <div class="mb-8 rounded-xl bg-gray-50/50 p-6 ring-1 ring-inset ring-gray-100">
+                <h3 class="mb-5 text-lg font-bold text-gray-900">Customer Details</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="customer_id" class="mb-2 block font-semibold text-gray-700">Customer</label>
-                        <select name="customer_id" id="customer_id" class="w-full rounded border px-3 py-2">
+                        <label for="customer_id" class="mb-2 block text-sm font-medium leading-6 text-gray-900">Customer</label>
+                        <select name="customer_id" id="customer_id" class="block w-full rounded-lg border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
                             <option value="">Select Customer</option>
                             @foreach ($customers as $customer)
                                 <option value="{{ $customer->id }}"
@@ -24,8 +24,8 @@
                         </select>
                     </div>
                     <div>
-                        <label for="order_type" class="mb-2 block font-semibold text-gray-700">Order Type</label>
-                        <select name="type" id="order_type" class="w-full rounded border px-3 py-2">
+                        <label for="order_type" class="mb-2 block text-sm font-medium leading-6 text-gray-900">Order Type</label>
+                        <select name="type" id="order_type" class="block w-full rounded-lg border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6">
                             <option value="">Select Type</option>
                             @foreach ($orderType as $type)
                                 <option value="{{ $type->value }}"
@@ -38,20 +38,20 @@
             </div>
 
             <!-- Items Selection -->
-            <div class="mb-6">
-                <h3 class="mb-4 text-lg font-semibold">Order Items</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse border border-gray-300">
-                        <thead class="bg-gray-100">
+            <div class="mb-8">
+                <h3 class="mb-5 text-lg font-bold text-gray-900">Order Items</h3>
+                <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
                             <tr>
-                                <th class="border border-gray-300 px-4 py-2 text-left">Item</th>
-                                <th class="border border-gray-300 px-4 py-2 text-left">Category</th>
-                                <th class="border border-gray-300 px-4 py-2 text-right">Price</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center">Quantity</th>
-                                <th class="border border-gray-300 px-4 py-2 text-right">Subtotal</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
                             </tr>
                         </thead>
-                        <tbody id="items-list">
+                        <tbody id="items-list" class="divide-y divide-gray-200 bg-white">
                             @php
                                 $initialSubtotal = 0;
                             @endphp
@@ -68,25 +68,31 @@
                                         $initialSubtotal += $rowSubtotal;
                                     }
                                 @endphp
-                                <tr class="item-row" data-item-id="{{ $item->id }}"
+                                <tr class="item-row hover:bg-gray-50 transition-colors" data-item-id="{{ $item->id }}"
                                     data-item-price="{{ $item->price }}" data-item-name="{{ $item->name }}">
-                                    <td class="border border-gray-300 px-4 py-2">
-                                        <input type="checkbox" name="items[{{ $item->id }}][selected]"
-                                            class="item-checkbox mr-2"
-                                            {{ old("items.$item->id.selected") ? 'checked' : ($hasItem ? 'checked' : '') }}>
-                                        <span class="item-name">{{ $item->name }}</span>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="items[{{ $item->id }}][selected]"
+                                                class="item-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 mr-3"
+                                                {{ old("items.$item->id.selected") ? 'checked' : ($hasItem ? 'checked' : '') }}>
+                                            <span class="item-name font-medium text-gray-900">{{ $item->name }}</span>
+                                        </div>
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-2">{{ ucfirst($item->category) }}</td>
-                                    <td class="item-price border border-gray-300 px-4 py-2 text-right">
-                                        EGP{{ number_format($item->price, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">{{ ucfirst($item->category) }}</span>
+                                    </td>
+                                    <td class="item-price px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 font-medium">
+                                        EGP{{ number_format($item->price, 2) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
                                         <input type="number" name="items[{{ $item->id }}][quantity]"
-                                            class="item-quantity w-20 rounded border px-2 py-1 text-center" min="0"
+                                            class="item-quantity w-20 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 text-center" min="0"
                                             value="{{ $qty }}"
                                             {{ old("items.$item->id.selected") ? '' : ($hasItem ? '' : 'disabled') }}>
                                     </td>
-                                    <td class="item-subtotal border border-gray-300 px-4 py-2 text-right">
-                                        EGP{{ number_format($rowSubtotal, 2) }}</td>
+                                    <td class="item-subtotal px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
+                                        EGP{{ number_format($rowSubtotal, 2) }}
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
@@ -110,38 +116,38 @@
             @endif
 
             <!-- Order Summary -->
-            <div class="mb-6 rounded bg-gray-50 p-4">
-                <div class="flex justify-end gap-8">
-                    <div>
-                        <span class="font-semibold">Subtotal:</span>
-                        <span id="subtotal" class="ml-2">EGP{{ number_format($initialSubtotal, 2) }}</span>
+            <div class="mb-8 rounded-xl bg-gray-50 p-6 ring-1 ring-inset ring-gray-100">
+                <div class="flex flex-col items-end gap-3 text-gray-700">
+                    <div class="flex justify-between w-48 text-sm">
+                        <span class="font-medium">Subtotal</span>
+                        <span id="subtotal" class="font-semibold text-gray-900">EGP{{ number_format($initialSubtotal, 2) }}</span>
                     </div>
-                    <div>
-                        <span class="font-semibold">Tax (14%):</span>
-                        <span id="tax" class="ml-2">EGP{{ number_format($initialSubtotal * 0.14, 2) }}</span>
+                    <div class="flex justify-between w-48 text-sm">
+                        <span class="font-medium">Tax (14%)</span>
+                        <span id="tax" class="font-semibold text-gray-900">EGP{{ number_format($initialSubtotal * 0.14, 2) }}</span>
                     </div>
-                    <div class="text-lg font-bold">
-                        <span>Total:</span>
-                        <span id="total" class="ml-2">EGP{{ number_format($initialSubtotal * 1.14, 2) }}</span>
+                    <div class="flex justify-between w-48 text-lg font-bold border-t border-gray-200 pt-3 mt-1">
+                        <span>Total</span>
+                        <span id="total" class="text-indigo-600">EGP{{ number_format($initialSubtotal * 1.14, 2) }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Notes -->
-            <div class="mb-6">
-                <label for="note" class="mb-2 block font-semibold text-gray-700">Special Instructions</label>
-                <textarea name="note" id="note" class="w-full rounded border px-3 py-2" rows="3"
+            <div class="mb-8">
+                <label for="note" class="mb-2 block text-sm font-medium leading-6 text-gray-900">Special Instructions</label>
+                <textarea name="note" id="note" class="block w-full rounded-lg border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" rows="3"
                     placeholder="Add any special requests...">{{ old('note', $order->note) }}</textarea>
             </div>
 
             <!-- Submit -->
-            <div class="flex gap-4">
-                <button type="submit" class="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700">
-                    Update Order
-                </button>
-                <a href="{{ route('home') }}" class="rounded bg-gray-600 px-6 py-2 text-white hover:bg-gray-700">
+            <div class="flex items-center justify-end gap-x-4 pt-4 border-t border-gray-100">
+                <a href="{{ route('orders.index') }}" class="text-sm font-semibold leading-6 text-gray-900 hover:text-gray-700">
                     Cancel
                 </a>
+                <button type="submit" class="rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-8 py-2.5 text-sm font-semibold text-white shadow-md hover:from-indigo-500 hover:to-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all">
+                    Update Order
+                </button>
             </div>
         </form>
     </div>

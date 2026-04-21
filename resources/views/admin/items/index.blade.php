@@ -1,12 +1,20 @@
 @extends('welcome')
 
 @section('content')
-    <header class="mb-7"><a class="rounded bg-gray-800 p-2 text-white" href="{{ route('items.create') }}">Add new item</a>
+    <header class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Menu Items</h1>
+            <p class="mt-1 text-sm text-gray-500">Manage your restaurant's catalog and offerings.</p>
+        </div>
+        <a href="{{ route('items.create') }}" class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Add New Item
+        </a>
     </header>
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($items as $item)
             <div
-                class="flex h-full flex-col overflow-hidden rounded-lg bg-white shadow-md transition-shadow duration-300 hover:shadow-lg">
+                class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
                 <!-- Photo Slider - Fixed height container -->
                 <div class="relative h-48 w-full bg-gray-100">
                     <div class="item-slider-{{ $item->id }} swiper-container h-full w-full">
@@ -40,9 +48,9 @@
                 <!-- Item Details -->
                 <div class="flex flex-grow flex-col p-4">
                     <div class="mb-2 flex items-start justify-between">
-                        <h3 class="truncate text-lg font-semibold text-gray-800">{{ $item->name }}</h3>
+                        <h3 class="truncate text-xl font-bold text-gray-800 tracking-tight">{{ $item->name }}</h3>
                         <span
-                            class="ml-2 whitespace-nowrap rounded bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                            class="ml-3 whitespace-nowrap rounded-lg bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
                             EGP{{ number_format($item->price, 2) }}
                         </span>
                     </div>
@@ -67,21 +75,21 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="mt-auto flex space-x-2">
+                    <div class="mt-auto flex space-x-3 pt-4 border-t border-gray-50">
                         @if (!$item->deleted_at)
                             <a href="{{ route('items.show', $item->id) }}"
-                                class="flex flex-1 items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-white transition duration-300 hover:bg-blue-900">
+                                class="flex flex-1 items-center justify-center rounded-xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800">
                                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                                Show
+                                Details
                             </a>
                             @if(auth()->user()->hasRole('Admin'))
                             <button onclick="openDeleteModal('{{ $item->id }}', '{{ $item->name }}')"
-                                class="flex flex-1 items-center justify-center rounded-md bg-red-500 px-4 py-2 text-white transition duration-300 hover:bg-red-600">
+                                class="flex flex-1 items-center justify-center rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-all duration-200 hover:bg-red-100 hover:text-red-800">
                                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -92,10 +100,10 @@
                         @else
                             @if(auth()->user()->hasRole('Admin'))
                             <button onclick="openRestoreModal('{{ $item->id }}', '{{ $item->name }}')"
-                                class="flex flex-1 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-white transition duration-300 hover:bg-green-600">
+                                class="flex flex-1 items-center justify-center rounded-xl bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 transition-all duration-200 hover:bg-green-100 hover:text-green-800">
                                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
                                 Restore
                             </button>
