@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,9 +10,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToTenant;
 
-    protected $fillable = ['order_number', 'price', 'tax', 'net', 'type', 'note', 'user_id', 'customer_id'];
+    protected $fillable = ['order_number', 'price', 'tax', 'net', 'type', 'note', 'user_id', 'customer_id', 'restaurant_id'];
 
     public function customer(): BelongsTo
     {

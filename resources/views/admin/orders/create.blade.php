@@ -64,9 +64,9 @@
                                         EGP{{ number_format($item->price, 2) }}</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <input type="number" name="items[{{ $item->id }}][quantity]"
-                                            class="item-quantity w-20 rounded border px-2 py-1 text-center" value="0"
-                                            min="0" value="{{ old("items.$item->id.quantity", 0) }}"
-                                            {{ old("items.$item->id.selected") ? '' : 'disabled' }}>
+                                            class="item-quantity w-20 rounded border px-2 py-1 text-center"
+                                            min="0" value="{{ old('items.' . $item->id . '.quantity', 0) }}"
+                                            {{ old('items.' . $item->id . '.selected') ? '' : 'disabled' }}>
                                     </td>
                                     <td class="item-subtotal border border-gray-300 px-4 py-2 text-right">EGP0.00</td>
                                 </tr>
@@ -113,7 +113,7 @@
             <div class="mb-6">
                 <label for="note" class="mb-2 block font-semibold text-gray-700">Special Instructions</label>
                 <textarea name="note" id="note" class="w-full rounded border px-3 py-2" rows="3"
-                    placeholder="Add any special requests..." {{ old('note') }}></textarea>
+                    placeholder="Add any special requests...">{{ old('note') }}</textarea>
             </div>
 
             <!-- Submit -->
@@ -182,5 +182,8 @@
             document.getElementById('tax').textContent = 'EGP' + tax.toFixed(2);
             document.getElementById('total').textContent = 'EGP' + total.toFixed(2);
         }
+
+        // Initialize totals on page load to handle old() input
+        updateTotals();
     </script>
 @endsection

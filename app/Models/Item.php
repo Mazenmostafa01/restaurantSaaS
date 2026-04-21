@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\BelongsToTenant;
 
 class Item extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToTenant;
 
-    protected $fillable = ['name', 'price', 'category', 'description'];
+    protected $fillable = ['name', 'price', 'category', 'description', 'restaurant_id'];
 
     public function orders(): BelongsToMany
     {

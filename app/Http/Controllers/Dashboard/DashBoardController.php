@@ -10,6 +10,7 @@ class DashBoardController extends Controller
 {
     public function __invoke()
     {
+        dd(app());
         $orders = Order::selectRaw('SUM(net) as total_sales, SUM(tax) as tax, COUNT(*) as total_orders')
             ->whereBetween('created_at', [now()->startOfYear(), now()])->first();
 
@@ -26,6 +27,16 @@ class DashBoardController extends Controller
             $yearlyData[] = (float) ($monthlySalesData->get($month, 0) ?? 0);
         }
 
-        return view('admin.dashboard.index', compact('orders', 'yearlyData'));
+        // Fetch top selling items
+        $topItems = \App\Models\Item::select('items.name', DB::raw('SUM(order_items.quantity * items.price) as total_sales'))
+            ->join('order_items', 'items.id', '=', 'order_items.item_id')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->whereBetween('orders.created_at', [now()->startOfYear(), now()])
+            ->groupBy('items.id', 'items.name')
+            ->orderByDesc('total_sales')
+            ->limit(5)
+            ->get();
+
+        return view('admin.dashboard.index', compact('orders', 'yearlyData', 'topItems'));
     }
 }

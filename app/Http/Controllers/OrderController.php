@@ -19,7 +19,7 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::orderBy('created_at', 'desc')->get();
+        $orders = Order::orderBy('created_at', 'desc')->paginate(15);
 
         return view('admin.orders.index', compact('orders'));
     }
@@ -80,6 +80,8 @@ class OrderController extends Controller
 
     public function edit(Order $order)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         $customers = Customer::select('id', 'name')->get();
         $orderType = OrderTypeEnum::cases();
         $items = Item::orderBy('category')->get();
@@ -89,6 +91,8 @@ class OrderController extends Controller
 
     public function update(OrderUpdateRequest $request, Order $order)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         $request = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
@@ -134,6 +138,8 @@ class OrderController extends Controller
 
     public function delete(Order $order)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         DB::beginTransaction();
         try {
             $order->items()->detach();

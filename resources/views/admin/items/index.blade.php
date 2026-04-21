@@ -79,6 +79,7 @@
                                 </svg>
                                 Show
                             </a>
+                            @if(auth()->user()->hasRole('Admin'))
                             <button onclick="openDeleteModal('{{ $item->id }}', '{{ $item->name }}')"
                                 class="flex flex-1 items-center justify-center rounded-md bg-red-500 px-4 py-2 text-white transition duration-300 hover:bg-red-600">
                                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +88,9 @@
                                 </svg>
                                 Delete
                             </button>
+                            @endif
                         @else
+                            @if(auth()->user()->hasRole('Admin'))
                             <button onclick="openRestoreModal('{{ $item->id }}', '{{ $item->name }}')"
                                 class="flex flex-1 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-white transition duration-300 hover:bg-green-600">
                                 <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,12 +99,19 @@
                                 </svg>
                                 Restore
                             </button>
+                            @endif
                         @endif
                     </div>
                 </div>
             </div>
         @endforeach
     </div>
+
+    @if ($items->hasPages())
+        <div class="mt-6">
+            {{ $items->links() }}
+        </div>
+    @endif
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="fixed inset-0 z-50 hidden h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">

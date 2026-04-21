@@ -1,7 +1,8 @@
 @extends('welcome')
 
 @section('content')
-    <header class="mb-7"><a class="rounded bg-gray-800 p-2 text-white" href="{{ route('items.create') }}">Add new item</a>
+    <header class="mb-7">
+        <a class="rounded bg-gray-800 p-2 text-white" href="{{ route('orders.create') }}">Add new order</a>
     </header>
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($orders as $order)
@@ -36,6 +37,7 @@
 
                     <!-- Action Buttons -->
                     <div class="mt-auto flex space-x-2">
+                        @if(auth()->user()->hasRole('Admin'))
                         <a href="{{ route('orders.edit', ['order' => $order->id]) }}"
                             class="flex flex-1 items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-white transition duration-300 hover:bg-blue-900">
                             <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,11 +56,20 @@
                             </svg>
                             Delete
                         </button>
+                        @else
+                        <span class="text-sm text-gray-400">View only</span>
+                        @endif
                     </div>
                 </div>
             </div>
         @endforeach
     </div>
+
+    @if ($orders->hasPages())
+        <div class="mt-6">
+            {{ $orders->links() }}
+        </div>
+    @endif
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="fixed inset-0 z-50 hidden h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">

@@ -15,7 +15,7 @@ class ItemController extends Controller
 {
     public function index()
     {
-        $items = Item::withTrashed()->with('attachments')->get();
+        $items = Item::withTrashed()->with('attachments')->paginate(15);
 
         return view('admin.items.index', compact('items'));
     }
@@ -74,6 +74,8 @@ class ItemController extends Controller
 
     public function edit(Item $item)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         $attachments = $item->attachments->map->url();
         $categories = ItemCategoryEnum::cases();
 
@@ -82,6 +84,8 @@ class ItemController extends Controller
 
     public function update(UpdateItemRequest $request, Item $item)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         DB::beginTransaction();
         try {
             $item->update(
@@ -129,6 +133,8 @@ class ItemController extends Controller
 
     public function delete(Item $item)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         $item->delete();
 
         return redirect()->route('items.index')->with('success', 'Item removed.');
@@ -136,6 +142,8 @@ class ItemController extends Controller
 
     public function restore($item)
     {
+        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
+
         $trashedItem = Item::withTrashed()->find($item);
         if ($trashedItem) {
             $trashedItem->restore();
