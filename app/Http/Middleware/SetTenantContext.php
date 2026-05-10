@@ -26,7 +26,7 @@ class SetTenantContext
     {
         $user = $request->user();
 
-        if ($user && $user->restaurant_id) {
+        if ($user && $user->restaurant_id !== null) {
             // Load the restaurant model once per request and cache it in the context
             $restaurant = Restaurant::find($user->restaurant_id);
 
