@@ -2,23 +2,35 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Customer extends Model
+class Customer extends Authenticatable
 {
-    use BelongsToTenant;
+    use HasApiTokens, Notifiable, BelongsToTenant;
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone_number', 'address', 'restaurant_id'
+        'name', 'email', 'password', 'phone_number', 'address', 'restaurant_id',
     ];
 
     protected $hidden = [
         'password',
+        'remember_token',
     ];
 
-    public function orders()
+    protected function casts(): array
     {
-        $this->hasMany(Order::class);
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Dashboard\DashBoardController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\Api\Customer\CustomerSpaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -37,3 +38,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
     });
 });
+
+// ── Customer SPA (catch-all) ─────────────────────────────────────────────────
+// Must be LAST so it doesn't intercept admin routes like /login, /dashboard, etc.
+Route::get('/{restaurant:slug}/{any?}', CustomerSpaController::class)
+    ->where('any', '.*')
+    ->name('customer.spa');
+
