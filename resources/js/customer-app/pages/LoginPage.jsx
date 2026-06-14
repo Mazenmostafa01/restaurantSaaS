@@ -11,7 +11,7 @@ export default function LoginPage() {
     const [submitting, setSubmitting] = useState(false);
 
     if (customer) {
-        return <Navigate to="" replace />;
+        return <Navigate to="/" replace />;
     }
 
     const handleSubmit = async (e) => {
@@ -21,7 +21,7 @@ export default function LoginPage() {
 
         try {
             await login(email, password);
-            navigate("");
+            navigate("/");
         } catch (err) {
             setError(err.response?.data?.message || "Login failed.");
         } finally {

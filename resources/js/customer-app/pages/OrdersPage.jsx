@@ -18,7 +18,7 @@ export default function OrdersPage({ slug }) {
     }, [slug, customer]);
 
     if (!authLoading && !customer) {
-        return <Navigate to="login" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     if (loading || authLoading) {

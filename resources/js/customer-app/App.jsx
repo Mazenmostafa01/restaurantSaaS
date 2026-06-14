@@ -42,7 +42,7 @@ export default function App({ restaurant }) {
                         <Route path="login" element={<LoginPage />} />
                         <Route path="register" element={<RegisterPage />} />
                         <Route path="profile" element={<ProfilePage />} />
-                        <Route path="*" element={<Navigate to="" replace />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
                 </Routes>
             </CartProvider>

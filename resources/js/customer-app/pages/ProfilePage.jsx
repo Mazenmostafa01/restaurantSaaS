@@ -10,7 +10,7 @@ export default function ProfilePage() {
     const [message, setMessage] = useState(null);
 
     if (!loading && !customer) {
-        return <Navigate to="login" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     if (loading) {

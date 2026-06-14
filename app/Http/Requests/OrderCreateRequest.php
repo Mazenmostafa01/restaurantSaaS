@@ -3,7 +3,11 @@
 namespace App\Http\Requests;
 
 use App\Enums\OrderTypeEnum;
+use App\Models\Item;
+use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 use Illuminate\Validation\Rules\Enum;
 
 class OrderCreateRequest extends FormRequest
@@ -23,8 +27,15 @@ class OrderCreateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tenantId = app(TenantContext::class)->id();
+        $customerRule = Rule::exists('customers', 'id');
+
+        if ($tenantId !== null) {
+            $customerRule->where('restaurant_id', $tenantId);
+        }
+
         return [
-            'customer_id' => 'required_if:type,delivery',
+            'customer_id' => ['required_if:type,delivery', 'nullable', $customerRule],
             'type' => ['required', new Enum(OrderTypeEnum::class)],
             'items' => 'required|array|min:1',
             'items.*.selected' => 'required_with:items.*.quantity|in:on',
@@ -42,5 +53,22 @@ class OrderCreateRequest extends FormRequest
             'items.required' => 'You must select at least one item.',
             'items.*.quantity.min' => 'Quantity must be at least 1.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $itemIds = array_keys($this->input('items', []));
+
+            if ($itemIds === []) {
+                return;
+            }
+
+            $validItemCount = Item::whereIn('id', $itemIds)->count();
+
+            if ($validItemCount !== count($itemIds)) {
+                $validator->errors()->add('items', 'One or more selected items are invalid for this restaurant.');
+            }
+        });
     }
 }

@@ -18,7 +18,7 @@ export default function RegisterPage() {
     const [submitting, setSubmitting] = useState(false);
 
     if (customer) {
-        return <Navigate to="" replace />;
+        return <Navigate to="/" replace />;
     }
 
     const handleChange = (e) => {
@@ -32,7 +32,7 @@ export default function RegisterPage() {
 
         try {
             await register(form);
-            navigate("");
+            navigate("/");
         } catch (err) {
             if (err.response?.status === 422 && err.response?.data?.errors) {
                 setErrors(err.response.data.errors);
@@ -130,7 +130,13 @@ export default function RegisterPage() {
                             value={form.address}
                             onChange={handleChange}
                             placeholder="Your delivery address"
+                            required
                         />
+                        {errors.address && (
+                            <span className="form-field-error">
+                                {errors.address[0]}
+                            </span>
+                        )}
                     </div>
 
                     <div className="form-group">

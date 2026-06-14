@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Services\TenantContext;
 use App\Traits\Calculation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class CustomerOrderController extends Controller
 {
@@ -83,11 +85,17 @@ class CustomerOrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $tenantId = app(TenantContext::class)->id();
+
         $validated = $request->validate([
             'type'               => ['required', 'in:take_away,delivery'],
             'note'               => ['nullable', 'string', 'max:500'],
             'items'              => ['required', 'array', 'min:1'],
-            'items.*.id'         => ['required', 'integer', 'exists:items,id'],
+            'items.*.id'         => [
+                'required',
+                'integer',
+                Rule::exists('items', 'id')->where('restaurant_id', $tenantId),
+            ],
             'items.*.quantity'   => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 

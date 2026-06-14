@@ -6,7 +6,7 @@ export default function CartBadge() {
     const { totalItems } = useCart();
 
     return (
-        <Link to="cart" className="cart-badge-link" aria-label="View cart">
+        <Link to="/cart" className="cart-badge-link" aria-label="View cart">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="cart-badge-icon">
                 <circle cx="9" cy="21" r="1" />
                 <circle cx="20" cy="21" r="1" />

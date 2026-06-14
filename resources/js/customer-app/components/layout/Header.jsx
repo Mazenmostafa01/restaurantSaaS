@@ -9,7 +9,7 @@ export default function Header({ restaurant }) {
     return (
         <header className="app-header">
             <div className="header-inner">
-                <Link to="" className="header-brand">
+                <Link to="/" className="header-brand">
                     {restaurant.logo ? (
                         <img src={restaurant.logo} alt={restaurant.name} className="header-logo" />
                     ) : (
@@ -23,11 +23,11 @@ export default function Header({ restaurant }) {
                 <div className="header-actions">
                     <CartBadge />
                     {customer ? (
-                        <Link to="profile" className="header-avatar" title={customer.name}>
+                        <Link to="/profile" className="header-avatar" title={customer.name}>
                             {customer.name.charAt(0).toUpperCase()}
                         </Link>
                     ) : (
-                        <Link to="login" className="header-login-btn">Sign In</Link>
+                        <Link to="/login" className="header-login-btn">Sign In</Link>
                     )}
                 </div>
             </div>

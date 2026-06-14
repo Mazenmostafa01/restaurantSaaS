@@ -123,6 +123,7 @@ class CustomerAuthRateLimitingTest extends TestCase
                 'name' => 'New Customer',
                 'email' => $email,
                 'phone_number' => '0987654321',
+                'address' => '123 Customer St',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
             ], $headers);
@@ -135,6 +136,7 @@ class CustomerAuthRateLimitingTest extends TestCase
             'name' => 'New Customer',
             'email' => $email,
             'phone_number' => '0987654321',
+            'address' => '123 Customer St',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ], $headers);

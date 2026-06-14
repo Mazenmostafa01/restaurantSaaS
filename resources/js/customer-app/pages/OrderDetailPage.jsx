@@ -20,7 +20,7 @@ export default function OrderDetailPage({ slug }) {
     }, [slug, id, customer]);
 
     if (!authLoading && !customer) {
-        return <Navigate to="login" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     if (loading || authLoading) {
@@ -37,7 +37,7 @@ export default function OrderDetailPage({ slug }) {
 
     return (
         <div className="order-detail-page">
-            <Link to="orders" className="back-link">
+            <Link to="/orders" className="back-link">
                 ← Back to Orders
             </Link>
 
