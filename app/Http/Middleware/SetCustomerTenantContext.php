@@ -31,7 +31,7 @@ class SetCustomerTenantContext
         $middlewares = $request->route()->middleware();
         if (in_array('auth:customer', $middlewares)) {
             $customer = $request->user('customer');
-            if ($customer && $customer->restaurant_id !== $restaurant->id) {
+            if ($customer && (int) $customer->restaurant_id !== (int) $restaurant->id) {
                 return response()->json([
                     'message' => 'Unauthenticated.',
                 ], 401);

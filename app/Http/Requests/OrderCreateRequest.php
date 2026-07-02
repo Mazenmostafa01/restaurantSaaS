@@ -56,7 +56,13 @@ class OrderCreateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $itemIds = array_keys($this->input('items', []));
+            $items = $this->input('items', []);
+
+            if (! is_array($items)) {
+                return;
+            }
+
+            $itemIds = array_keys($items);
 
             if ($itemIds === []) {
                 return;
