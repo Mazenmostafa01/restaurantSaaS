@@ -6,15 +6,11 @@ trait Calculation
 {
     public function subTotal($price = 0, $quantity = 1)
     {
-        $subTotal = $price * $quantity;
-
-        return $subTotal;
+        return $price * $quantity;
     }
 
     public function tax($subTotal)
     {
-        $tax = $subTotal * 0.14;
-
-        return $tax;
+        return $subTotal * 0.14;
     }
 }

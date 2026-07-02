@@ -16,14 +16,14 @@ class CustomerRestaurantController extends Controller
     {
         return response()->json([
             'restaurant' => [
-                'id'      => $restaurant->id,
-                'name'    => $restaurant->name,
-                'slug'    => $restaurant->slug,
-                'email'   => $restaurant->email,
-                'phone'   => $restaurant->phone,
+                'id' => $restaurant->id,
+                'name' => $restaurant->name,
+                'slug' => $restaurant->slug,
+                'email' => $restaurant->email,
+                'phone' => $restaurant->phone,
                 'address' => $restaurant->address,
-                'logo'    => $restaurant->logo_path
-                    ? asset('storage/' . $restaurant->logo_path)
+                'logo' => $restaurant->logo_path
+                    ? asset('storage/'.$restaurant->logo_path)
                     : null,
             ],
         ]);

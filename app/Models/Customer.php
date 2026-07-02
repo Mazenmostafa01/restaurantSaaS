@@ -10,7 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Customer extends Authenticatable
 {
-    use HasApiTokens, Notifiable, BelongsToTenant;
+    use BelongsToTenant, HasApiTokens, Notifiable;
 
     protected $fillable = [
         'name', 'email', 'password', 'phone_number', 'address', 'restaurant_id',

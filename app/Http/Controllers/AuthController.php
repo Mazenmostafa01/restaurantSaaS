@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Show login form
     public function showLoginForm()
     {
         if (Auth::check()) {
@@ -17,7 +16,6 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    // Handle login
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -37,7 +35,6 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    // Handle logout
     public function logout(Request $request)
     {
         Auth::logout();

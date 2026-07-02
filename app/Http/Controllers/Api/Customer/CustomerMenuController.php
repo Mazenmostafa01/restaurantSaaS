@@ -25,14 +25,14 @@ class CustomerMenuController extends Controller
         foreach ($items as $category => $categoryItems) {
             $menu[] = [
                 'category' => $category,
-                'items'    => $categoryItems->map(fn ($item) => [
-                    'id'          => $item->id,
-                    'name'        => $item->name,
-                    'price'       => number_format($item->price, 2),
-                    'price_raw'   => (float) $item->price,
+                'items' => $categoryItems->map(fn ($item) => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'price' => number_format($item->price, 2),
+                    'price_raw' => (float) $item->price,
                     'description' => $item->description,
-                    'category'    => $item->category,
-                    'image'       => $item->attachments->where('is_primary', true)->first()?->url()
+                    'category' => $item->category,
+                    'image' => $item->attachments->where('is_primary', true)->first()?->url()
                                   ?? $item->attachments->first()?->url(),
                 ]),
             ];

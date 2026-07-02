@@ -25,8 +25,6 @@ class Restaurant extends Model
         'is_active' => 'boolean',
     ];
 
-    // ── Auto-generate slug from name if not provided ──────────────────────────
-
     protected static function booted(): void
     {
         static::creating(function (self $restaurant): void {
@@ -35,8 +33,6 @@ class Restaurant extends Model
             }
         });
     }
-
-    // ── Relationships ─────────────────────────────────────────────────────────
 
     public function users(): HasMany
     {

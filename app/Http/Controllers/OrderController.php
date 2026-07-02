@@ -36,16 +36,16 @@ class OrderController extends Controller
 
     public function store(OrderCreateRequest $request)
     {
-        $request = $request->validated();
+        $validated = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
         DB::beginTransaction();
         try {
-            foreach ($request['items'] as $itemId => $itemValues) {
+            foreach ($validated['items'] as $itemId => $selectedItem) {
                 $item = Item::findOrFail($itemId);
-                $subTotal += $this->subTotal($item->price, $itemValues['quantity']);
+                $subTotal += $this->subTotal($item->price, $selectedItem['quantity']);
                 $orderDetails[$itemId] = [
-                    'quantity' => $itemValues['quantity'],
+                    'quantity' => $selectedItem['quantity'],
                 ];
             }
             $tax = $this->tax($subTotal);
@@ -56,10 +56,10 @@ class OrderController extends Controller
                 'price' => $subTotal,
                 'tax' => $tax,
                 'net' => $netTotal,
-                'type' => $request['type'],
-                'note' => $request['note'] ?? null,
-                'user_id' => auth()->user()->id,
-                'customer_id' => $request['customer_id'] ?? null,
+                'type' => $validated['type'],
+                'note' => $validated['note'] ?? null,
+                'user_id' => auth()->id(),
+                'customer_id' => $validated['customer_id'] ?? null,
             ]);
 
             foreach ($orderDetails as $itemId => $detail) {
@@ -93,20 +93,20 @@ class OrderController extends Controller
     {
         abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
 
-        $request = $request->validated();
+        $validated = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
-        $items = Item::whereIn('id', array_keys($request['items']))->get()->keyBy('id');
+        $items = Item::whereIn('id', array_keys($validated['items']))->get()->keyBy('id');
         DB::beginTransaction();
         try {
-            foreach ($request['items'] as $itemId => $itemValues) {
+            foreach ($validated['items'] as $itemId => $selectedItem) {
                 if (! isset($items[$itemId])) {
                     continue;
                 }
                 $item = $items[$itemId];
-                $subTotal += $this->subTotal($item->price, $itemValues['quantity']);
+                $subTotal += $this->subTotal($item->price, $selectedItem['quantity']);
                 $orderDetails[$itemId] = [
-                    'quantity' => $itemValues['quantity'],
+                    'quantity' => $selectedItem['quantity'],
                 ];
             }
             $tax = $this->tax($subTotal);
@@ -116,10 +116,10 @@ class OrderController extends Controller
                 'price' => $subTotal,
                 'tax' => $tax,
                 'net' => $netTotal,
-                'type' => $request['type'],
-                'note' => $request['note'] ?? null,
+                'type' => $validated['type'],
+                'note' => $validated['note'] ?? null,
                 'user_id' => auth()->id(),
-                'customer_id' => $request['customer_id'] ?? null,
+                'customer_id' => $validated['customer_id'] ?? null,
             ]);
 
             $order->items()->sync($orderDetails);
@@ -130,9 +130,9 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::info('order create error', [$e]);
+            Log::info('order update error', [$e]);
 
-            return back()->with('error', 'Failed to create order.');
+            return back()->with('error', 'Failed to update order.');
         }
     }
 
@@ -148,6 +148,7 @@ class OrderController extends Controller
 
             return redirect()->route('orders.index');
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::info('delete order error', [$e]);
 
             return back()->with('error', 'Failed to delete order.');

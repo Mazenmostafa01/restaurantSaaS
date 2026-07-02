@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes, BelongsToTenant;
+    use BelongsToTenant, SoftDeletes;
 
     protected $fillable = ['order_number', 'price', 'tax', 'net', 'type', 'note', 'user_id', 'customer_id', 'restaurant_id'];
 

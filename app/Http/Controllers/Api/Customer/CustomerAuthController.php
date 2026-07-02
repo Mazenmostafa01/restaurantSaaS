@@ -37,7 +37,6 @@ class CustomerAuthController extends Controller
             'address' => ['required', 'string', 'max:255'],
         ]);
 
-        // Check uniqueness within this restaurant (composite unique)
         $exists = Customer::withoutGlobalScopes()
             ->where('restaurant_id', $tenant->id())
             ->where(function ($q) use ($validated) {
@@ -58,12 +57,11 @@ class CustomerAuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'],
-            'password' => $validated['password'], // cast 'hashed' handles it
+            'password' => $validated['password'],
             'address' => $validated['address'] ?? null,
             'restaurant_id' => $tenant->id(),
         ]);
 
-        // Log the customer in via the customer guard
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
@@ -99,7 +97,6 @@ class CustomerAuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // Find the customer scoped to this restaurant
         $customer = Customer::withoutGlobalScopes()
             ->where('restaurant_id', $tenant->id())
             ->where('email', $validated['email'])

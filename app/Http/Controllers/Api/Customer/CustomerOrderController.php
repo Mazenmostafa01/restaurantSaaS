@@ -33,15 +33,15 @@ class CustomerOrderController extends Controller
 
         return response()->json([
             'orders' => $orders->through(fn ($order) => [
-                'id'           => $order->id,
+                'id' => $order->id,
                 'order_number' => $order->order_number,
-                'price'        => number_format($order->price, 2),
-                'tax'          => number_format($order->tax, 2),
-                'net'          => number_format($order->net, 2),
-                'type'         => $order->type,
-                'note'         => $order->note,
-                'items_count'  => $order->items->count(),
-                'created_at'   => $order->created_at->toDateTimeString(),
+                'price' => number_format($order->price, 2),
+                'tax' => number_format($order->tax, 2),
+                'net' => number_format($order->net, 2),
+                'type' => $order->type,
+                'note' => $order->note,
+                'items_count' => $order->items->count(),
+                'created_at' => $order->created_at->toDateTimeString(),
             ]),
         ]);
     }
@@ -53,7 +53,6 @@ class CustomerOrderController extends Controller
     {
         $customer = Auth::guard('customer')->user();
 
-        // Ensure this order belongs to the authenticated customer
         if ($order->customer_id !== $customer->id) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
@@ -62,18 +61,18 @@ class CustomerOrderController extends Controller
 
         return response()->json([
             'order' => [
-                'id'           => $order->id,
+                'id' => $order->id,
                 'order_number' => $order->order_number,
-                'price'        => number_format($order->price, 2),
-                'tax'          => number_format($order->tax, 2),
-                'net'          => number_format($order->net, 2),
-                'type'         => $order->type,
-                'note'         => $order->note,
-                'created_at'   => $order->created_at->toDateTimeString(),
-                'items'        => $order->items->map(fn ($item) => [
-                    'id'       => $item->id,
-                    'name'     => $item->name,
-                    'price'    => number_format($item->price, 2),
+                'price' => number_format($order->price, 2),
+                'tax' => number_format($order->tax, 2),
+                'net' => number_format($order->net, 2),
+                'type' => $order->type,
+                'note' => $order->note,
+                'created_at' => $order->created_at->toDateTimeString(),
+                'items' => $order->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'price' => number_format($item->price, 2),
                     'quantity' => $item->pivot->quantity,
                 ]),
             ],
@@ -88,15 +87,15 @@ class CustomerOrderController extends Controller
         $tenantId = app(TenantContext::class)->id();
 
         $validated = $request->validate([
-            'type'               => ['required', 'in:take_away,delivery'],
-            'note'               => ['nullable', 'string', 'max:500'],
-            'items'              => ['required', 'array', 'min:1'],
-            'items.*.id'         => [
+            'type' => ['required', 'in:take_away,delivery'],
+            'note' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => [
                 'required',
                 'integer',
                 Rule::exists('items', 'id')->where('restaurant_id', $tenantId),
             ],
-            'items.*.quantity'   => ['required', 'integer', 'min:1', 'max:99'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 
         $customer = Auth::guard('customer')->user();
@@ -116,13 +115,13 @@ class CustomerOrderController extends Controller
 
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
-                'price'        => $subTotal,
-                'tax'          => $tax,
-                'net'          => $netTotal,
-                'type'         => $validated['type'],
-                'note'         => $validated['note'] ?? null,
-                'user_id'      => null, // Customer orders have no admin user
-                'customer_id'  => $customer->id,
+                'price' => $subTotal,
+                'tax' => $tax,
+                'net' => $netTotal,
+                'type' => $validated['type'],
+                'note' => $validated['note'] ?? null,
+                'user_id' => null,
+                'customer_id' => $customer->id,
             ]);
 
             $order->items()->attach($orderDetails);
@@ -131,10 +130,10 @@ class CustomerOrderController extends Controller
 
             return response()->json([
                 'message' => 'Order placed successfully.',
-                'order'   => [
-                    'id'           => $order->id,
+                'order' => [
+                    'id' => $order->id,
                     'order_number' => $order->order_number,
-                    'net'          => number_format($netTotal, 2),
+                    'net' => number_format($netTotal, 2),
                 ],
             ], 201);
 
@@ -150,6 +149,6 @@ class CustomerOrderController extends Controller
 
     private function generateOrderNumber(): string
     {
-        return 'C-' . strtoupper(uniqid());
+        return 'C-'.strtoupper(uniqid());
     }
 }
