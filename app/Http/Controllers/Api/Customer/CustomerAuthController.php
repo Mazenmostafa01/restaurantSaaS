@@ -121,6 +121,8 @@ class CustomerAuthController extends Controller
                 'id' => $customer->id,
                 'name' => $customer->name,
                 'email' => $customer->email,
+                'address' => $customer->address,
+                'phone_number' => $customer->phone_number,
             ],
         ]);
     }
