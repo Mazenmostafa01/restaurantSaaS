@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Customer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class RestaurantSeeder extends Seeder
 {
@@ -22,6 +23,7 @@ class RestaurantSeeder extends Seeder
         // Create a default restaurant
         $restaurant = Restaurant::create([
             'name' => 'Main Restaurant',
+            'slug' => Str::slug('Main Restaurant'),
             'email' => 'contact@mainrestaurant.com',
             'phone' => '123-456-7890',
             'address' => '123 Main Street',
