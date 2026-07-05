@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import client from "../api/client";
+import { createCustomerClient } from "../api/client";
 import MenuCard from "../components/menu/MenuCard";
 import CategoryTabs from "../components/menu/CategoryTabs";
 
@@ -8,12 +8,13 @@ export default function MenuPage({ slug }) {
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState("all");
     const [error, setError] = useState(null);
+    const client = createCustomerClient(slug);
 
     useEffect(() => {
         setLoading(true);
         setError(null);
         client
-            .get(`/${slug}/menu`)
+            .get('/menu')
             .then((res) => setMenu(res.data.menu))
             .catch(() => setError("Failed to load menu."))
             .finally(() => setLoading(false));

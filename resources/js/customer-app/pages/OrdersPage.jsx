@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import client from "../api/client";
+import { createCustomerClient } from "../api/client";
 
 export default function OrdersPage({ slug }) {
     const { customer, loading: authLoading } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const client = createCustomerClient(slug);
 
     useEffect(() => {
         if (!customer) return;
         client
-            .get(`/${slug}/orders`)
+            .get('/orders')
             .then((res) => setOrders(res.data.orders.data || []))
             .catch(() => {})
             .finally(() => setLoading(false));

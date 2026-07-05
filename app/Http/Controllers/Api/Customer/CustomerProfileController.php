@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Auth;
 
 class CustomerProfileController extends Controller
 {
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
 
         return response()->json([
             'customer' => [
@@ -27,12 +27,13 @@ class CustomerProfileController extends Controller
 
     public function update(Request $request): JsonResponse
     {
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:50'],
             'phone_number' => ['sometimes', 'string', 'max:20'],
-            'address' => ['nullable', 'string', 'max:255'],
+            // allow empty string but convert to null later to avoid DB NOT NULL errors
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         if (isset($validated['phone_number']) && $validated['phone_number'] !== $customer->phone_number) {
@@ -48,6 +49,11 @@ class CustomerProfileController extends Controller
                     'errors' => ['phone_number' => ['This phone number is already in use at this restaurant.']],
                 ], 422);
             }
+        }
+
+        // Filter out address if it's explicitly null to avoid violating DB NOT NULL constraints
+        if (array_key_exists('address', $validated) && $validated['address'] === '') {
+            $validated['address'] = null;
         }
 
         $customer->update($validated);

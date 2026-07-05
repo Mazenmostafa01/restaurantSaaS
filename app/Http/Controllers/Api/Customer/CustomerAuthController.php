@@ -7,7 +7,6 @@ use App\Models\Customer;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules\Password;
@@ -62,13 +61,15 @@ class CustomerAuthController extends Controller
             'restaurant_id' => $tenant->id(),
         ]);
 
-        Auth::guard('customer')->login($customer);
-        $request->session()->regenerate();
+        // Revoke any existing tokens and create a new one
+        $customer->tokens()->delete();
+        $token = $customer->createToken($tenant->slug())->plainTextToken;
 
         RateLimiter::clear($throttleKey);
 
         return response()->json([
             'message' => 'Registration successful.',
+            'token' => $token,
             'customer' => [
                 'id' => $customer->id,
                 'name' => $customer->name,
@@ -110,13 +111,17 @@ class CustomerAuthController extends Controller
             ], 401);
         }
 
-        Auth::guard('customer')->login($customer, $request->boolean('remember'));
-        $request->session()->regenerate();
+        // Revoke existing tokens for this customer at this restaurant to prevent token reuse
+        $customer->tokens()->delete();
+
+        // Create a new Sanctum token
+        $token = $customer->createToken($tenant->slug())->plainTextToken;
 
         RateLimiter::clear($throttleKey);
 
         return response()->json([
             'message' => 'Login successful.',
+            'token' => $token,
             'customer' => [
                 'id' => $customer->id,
                 'name' => $customer->name,
@@ -129,16 +134,16 @@ class CustomerAuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('customer')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()
+            ->currentAccessToken()
+            ?->delete();
 
         return response()->json(['message' => 'Logged out.']);
     }
 
     public function user(Request $request): JsonResponse
     {
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
 
         return response()->json([
             'customer' => [

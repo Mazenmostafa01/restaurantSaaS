@@ -4,59 +4,73 @@ import React, {
     useState,
     useEffect,
     useCallback,
-} from "react";
-import client, { getCsrfCookie } from "../api/client";
+    useMemo,
+} from 'react';
+import { createCustomerClient, getToken, saveToken, removeToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children, slug }) {
     const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
+    const client = useMemo(() => createCustomerClient(slug), [slug]);
 
-    // Check if customer is already logged in on mount
+    // Check if customer is already logged in on mount by verifying token
     useEffect(() => {
-        client
-            .get(`/${slug}/user`)
-            .then((res) => setCustomer(res.data.customer))
-            .catch(() => setCustomer(null))
-            .finally(() => setLoading(false));
-    }, [slug]);
+        const token = getToken(slug);
+        if (token) {
+            client
+                .get('/user')
+                .then((res) => setCustomer(res.data.customer))
+                .catch(() => {
+                    removeToken(slug);
+                    setCustomer(null);
+                })
+                .finally(() => setLoading(false));
+        } else {
+            setLoading(false);
+        }
+    }, [slug, client]);
 
     const login = useCallback(
         async (email, password) => {
-            await getCsrfCookie();
-            const res = await client.post(`/${slug}/login`, {
+            const res = await client.post('/login', {
                 email,
                 password,
             });
+            saveToken(slug, res.data.token);
             setCustomer(res.data.customer);
             return res.data;
         },
-        [slug],
+        [slug, client],
     );
 
     const register = useCallback(
         async (data) => {
-            await getCsrfCookie();
-            const res = await client.post(`/${slug}/register`, data);
+            const res = await client.post('/register', data);
+            saveToken(slug, res.data.token);
             setCustomer(res.data.customer);
             return res.data;
         },
-        [slug],
+        [slug, client],
     );
 
     const logout = useCallback(async () => {
-        await client.post(`/${slug}/logout`);
-        setCustomer(null);
-    }, [slug]);
+        try {
+            await client.post('/logout');
+        } finally {
+            removeToken(slug);
+            setCustomer(null);
+        }
+    }, [slug, client]);
 
     const updateProfile = useCallback(
         async (data) => {
-            const res = await client.put(`/${slug}/profile`, data);
+            const res = await client.put('/profile', data);
             setCustomer(res.data.customer);
             return res.data;
         },
-        [slug],
+        [slug, client],
     );
 
     return (
@@ -77,6 +91,6 @@ export function AuthProvider({ children, slug }) {
 
 export function useAuth() {
     const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+    if (!ctx) throw new Error('useAuth must be used within AuthProvider');
     return ctx;
 }

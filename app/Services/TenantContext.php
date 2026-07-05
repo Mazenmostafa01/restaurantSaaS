@@ -32,4 +32,9 @@ class TenantContext
     {
         $this->current = null;
     }
+
+    public function slug()
+    {
+        return $this->current?->slug;
+    }
 }

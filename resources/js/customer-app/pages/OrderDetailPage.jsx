@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import client from "../api/client";
+import { createCustomerClient } from "../api/client";
 
 export default function OrderDetailPage({ slug }) {
     const { id } = useParams();
@@ -9,11 +9,12 @@ export default function OrderDetailPage({ slug }) {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const client = createCustomerClient(slug);
 
     useEffect(() => {
         if (!customer) return;
         client
-            .get(`/${slug}/orders/${id}`)
+            .get(`/orders/${id}`)
             .then((res) => setOrder(res.data.order))
             .catch(() => setError("Order not found."))
             .finally(() => setLoading(false));

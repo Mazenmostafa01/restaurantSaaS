@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import client from "../api/client";
+import { createCustomerClient } from "../api/client";
 
 export default function CheckoutPage({ slug }) {
     const { customer } = useAuth();
     const { items, subtotal, tax, total, clearCart } = useCart();
     const navigate = useNavigate();
+    const client = createCustomerClient(slug);
 
     const [type, setType] = useState("take_away");
     const [note, setNote] = useState("");
@@ -54,7 +55,7 @@ export default function CheckoutPage({ slug }) {
                 items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
             };
 
-            const res = await client.post(`/${slug}/orders`, payload);
+            const res = await client.post('/orders', payload);
             clearCart();
             navigate(`/orders/${res.data.order.id}`);
         } catch (err) {

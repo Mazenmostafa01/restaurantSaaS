@@ -22,14 +22,20 @@ class CustomerOrderController extends Controller
     /**
      * List the authenticated customer's orders for this restaurant.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
 
         $orders = Order::where('customer_id', $customer->id)
             ->with('items')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+
+        if (! $orders) {
+            return response()->json([
+                'message' => 'no orders founded',
+            ]);
+        }
 
         return response()->json([
             'orders' => $orders->through(fn ($order) => [
@@ -49,9 +55,9 @@ class CustomerOrderController extends Controller
     /**
      * Show a single order with full item details.
      */
-    public function show(Restaurant $restaurant, Order $order): JsonResponse
+    public function show(Request $request, Restaurant $restaurant, Order $order): JsonResponse
     {
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
 
         if ($order->customer_id !== $customer->id) {
             return response()->json(['message' => 'Order not found.'], 404);
@@ -98,7 +104,7 @@ class CustomerOrderController extends Controller
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 
-        $customer = Auth::guard('customer')->user();
+        $customer = $request->user();
         $subTotal = 0;
         $orderDetails = [];
 

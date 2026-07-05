@@ -37,7 +37,7 @@ Route::prefix('customer/{restaurant:slug}')
 
 // ── Authenticated customer routes ────────────────────────────────────────────
 Route::prefix('customer/{restaurant:slug}')
-    ->middleware(['auth:customer', 'customer-tenant'])
+    ->middleware(['auth:sanctum', 'customer-tenant'])
     ->group(function () {
 
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
