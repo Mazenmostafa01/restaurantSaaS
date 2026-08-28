@@ -14,6 +14,7 @@ export default function RegisterPage() {
         password_confirmation: "",
         address: "",
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -39,7 +40,7 @@ export default function RegisterPage() {
             } else {
                 setErrors({
                     general: [
-                        err.response?.data?.message || "Registration failed.",
+                        err.response?.data?.message || "Registration failed. Please verify your details.",
                     ],
                 });
             }
@@ -50,9 +51,9 @@ export default function RegisterPage() {
 
     return (
         <div className="auth-page">
-            <div className="auth-card">
+            <div className="auth-card" style={{ maxWidth: "480px" }}>
                 <h2>Create Account</h2>
-                <p className="auth-subtitle">Join us and start ordering</p>
+                <p className="auth-subtitle">Join us to enjoy fast delivery and order tracking</p>
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
@@ -66,7 +67,7 @@ export default function RegisterPage() {
                             className="form-input"
                             value={form.name}
                             onChange={handleChange}
-                            placeholder="John Doe"
+                            placeholder="e.g. John Smith"
                             required
                         />
                         {errors.name && (
@@ -78,7 +79,7 @@ export default function RegisterPage() {
 
                     <div className="form-group">
                         <label htmlFor="reg-email" className="form-label">
-                            Email
+                            Email Address
                         </label>
                         <input
                             id="reg-email"
@@ -88,6 +89,7 @@ export default function RegisterPage() {
                             value={form.email}
                             onChange={handleChange}
                             placeholder="you@example.com"
+                            autoComplete="email"
                             required
                         />
                         {errors.email && (
@@ -120,7 +122,7 @@ export default function RegisterPage() {
 
                     <div className="form-group">
                         <label htmlFor="address" className="form-label">
-                            Address
+                            Delivery Address
                         </label>
                         <input
                             id="address"
@@ -129,7 +131,7 @@ export default function RegisterPage() {
                             className="form-input"
                             value={form.address}
                             onChange={handleChange}
-                            placeholder="Your delivery address"
+                            placeholder="Street name, building, apartment / office"
                             required
                         />
                         {errors.address && (
@@ -143,16 +145,26 @@ export default function RegisterPage() {
                         <label htmlFor="reg-password" className="form-label">
                             Password
                         </label>
-                        <input
-                            id="reg-password"
-                            name="password"
-                            type="password"
-                            className="form-input"
-                            value={form.password}
-                            onChange={handleChange}
-                            placeholder="••••••••"
-                            required
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                id="reg-password"
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                className="form-input"
+                                value={form.password}
+                                onChange={handleChange}
+                                placeholder="Minimum 6 characters"
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? "Hide" : "Show"}
+                            </button>
+                        </div>
                         {errors.password && (
                             <span className="form-field-error">
                                 {errors.password[0]}
@@ -170,11 +182,11 @@ export default function RegisterPage() {
                         <input
                             id="password_confirmation"
                             name="password_confirmation"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             className="form-input"
                             value={form.password_confirmation}
                             onChange={handleChange}
-                            placeholder="••••••••"
+                            placeholder="Re-enter your password"
                             required
                         />
                     </div>
@@ -187,13 +199,17 @@ export default function RegisterPage() {
                         type="submit"
                         className="btn btn-primary btn-block"
                         disabled={submitting}
+                        style={{ padding: "14px 20px", marginTop: "4px" }}
                     >
-                        {submitting ? "Creating Account..." : "Create Account"}
+                        {submitting ? "Creating Account..." : "Complete Registration"}
                     </button>
                 </form>
 
                 <p className="auth-footer">
-                    Already have an account? <Link to="/login">Sign in</Link>
+                    Already have an account?{" "}
+                    <Link to="/login" style={{ color: "var(--c-primary)" }}>
+                        Sign in here
+                    </Link>
                 </p>
             </div>
         </div>

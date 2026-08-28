@@ -37,17 +37,26 @@ export function CartProvider({ children, slug }) {
         saveCart(slug, items);
     }, [items, slug]);
 
-    const addItem = useCallback((item) => {
+    const addItem = useCallback((item, quantity = 1) => {
+        const qtyToAdd = Math.max(1, quantity);
         setItems((prev) => {
             const existing = prev.find((i) => i.id === item.id);
             if (existing) {
                 return prev.map((i) =>
-                    i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i,
+                    i.id === item.id ? { ...i, quantity: i.quantity + qtyToAdd } : i,
                 );
             }
-            return [...prev, { ...item, quantity: 1 }];
+            return [...prev, { ...item, quantity: qtyToAdd }];
         });
     }, []);
+
+    const getItemQuantity = useCallback(
+        (itemId) => {
+            const found = items.find((i) => i.id === itemId);
+            return found ? found.quantity : 0;
+        },
+        [items],
+    );
 
     const removeItem = useCallback((itemId) => {
         setItems((prev) => prev.filter((i) => i.id !== itemId));
@@ -82,6 +91,7 @@ export function CartProvider({ children, slug }) {
                 addItem,
                 removeItem,
                 updateQuantity,
+                getItemQuantity,
                 clearCart,
                 totalItems,
                 subtotal,

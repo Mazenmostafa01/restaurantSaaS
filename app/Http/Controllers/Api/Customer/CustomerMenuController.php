@@ -32,8 +32,7 @@ class CustomerMenuController extends Controller
                     'price_raw' => (float) $item->price,
                     'description' => $item->description,
                     'category' => $item->category,
-                    'image' => $item->attachments->where('is_primary', true)->first()?->url()
-                                  ?? $item->attachments->first()?->url(),
+                    'images' => $item->attachments->map->url(),
                 ]),
             ];
         }

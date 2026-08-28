@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProfilePage() {
@@ -17,6 +17,9 @@ export default function ProfilePage() {
         return (
             <div className="page-loader">
                 <div className="spinner" />
+                <p style={{ color: "var(--c-text-muted)", fontSize: "14px", marginTop: "8px" }}>
+                    Loading your profile...
+                </p>
             </div>
         );
     }
@@ -38,9 +41,9 @@ export default function ProfilePage() {
         try {
             await updateProfile(form);
             setEditing(false);
-            setMessage("Profile updated!");
+            setMessage("Profile updated successfully!");
         } catch (err) {
-            setMessage(err.response?.data?.message || "Update failed.");
+            setMessage(err.response?.data?.message || "Failed to update profile. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -48,56 +51,67 @@ export default function ProfilePage() {
 
     return (
         <div className="profile-page">
-            <h2>Your Profile</h2>
+            <h2 className="page-title">Your Profile</h2>
 
             {message && <div className="profile-message">{message}</div>}
 
             {!editing ? (
                 <div className="profile-card">
-                    <div className="profile-avatar">
+                    <div className="profile-avatar-large">
                         {customer.name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="profile-info">
-                        <div className="profile-row">
-                            <span className="profile-label">Name</span>
-                            <span className="profile-value">
-                                {customer.name}
-                            </span>
+                    <div className="profile-name-title">{customer.name}</div>
+                    <div className="profile-email-sub">{customer.email}</div>
+
+                    <div className="profile-details-table">
+                        <div className="profile-detail-row">
+                            <span className="profile-detail-label">Phone Number</span>
+                            <span className="profile-detail-value">{customer.phone_number}</span>
                         </div>
-                        <div className="profile-row">
-                            <span className="profile-label">Email</span>
-                            <span className="profile-value">
-                                {customer.email}
-                            </span>
-                        </div>
-                        <div className="profile-row">
-                            <span className="profile-label">Phone</span>
-                            <span className="profile-value">
-                                {customer.phone_number}
-                            </span>
-                        </div>
-                        <div className="profile-row">
-                            <span className="profile-label">Address</span>
-                            <span className="profile-value">
-                                {customer.address || "—"}
-                            </span>
+                        <div className="profile-detail-row">
+                            <span className="profile-detail-label">Default Address</span>
+                            <span className="profile-detail-value">{customer.address || "Not specified"}</span>
                         </div>
                     </div>
 
                     <div className="profile-actions">
-                        <button className="btn btn-outline" onClick={startEdit}>
+                        <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={startEdit}
+                            style={{ flex: 1 }}
+                        >
                             Edit Profile
                         </button>
-                        <button className="btn btn-danger" onClick={logout}>
+                        <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={logout}
+                            style={{ flex: 1 }}
+                        >
                             Sign Out
                         </button>
+                    </div>
+
+                    <div style={{ marginTop: "20px", width: "100%", textAlign: "center" }}>
+                        <Link
+                            to="/orders"
+                            style={{ fontSize: "13px", color: "var(--c-primary)", fontWeight: 600 }}
+                        >
+                            View Your Order History →
+                        </Link>
                     </div>
                 </div>
             ) : (
                 <form onSubmit={handleSave} className="profile-edit-form">
+                    <h3 style={{ fontSize: "18px", fontWeight: 700 }}>Edit Information</h3>
+
                     <div className="form-group">
-                        <label className="form-label">Name</label>
+                        <label htmlFor="prof-name" className="form-label">
+                            Full Name
+                        </label>
                         <input
+                            id="prof-name"
                             type="text"
                             className="form-input"
                             value={form.name}
@@ -107,9 +121,13 @@ export default function ProfilePage() {
                             required
                         />
                     </div>
+
                     <div className="form-group">
-                        <label className="form-label">Phone</label>
+                        <label htmlFor="prof-phone" className="form-label">
+                            Phone Number
+                        </label>
                         <input
+                            id="prof-phone"
                             type="tel"
                             className="form-input"
                             value={form.phone_number}
@@ -122,11 +140,14 @@ export default function ProfilePage() {
                             required
                         />
                     </div>
+
                     <div className="form-group">
-                        <label className="form-label">Address</label>
-                        <input
-                            type="text"
-                            className="form-input"
+                        <label htmlFor="prof-address" className="form-label">
+                            Delivery Address
+                        </label>
+                        <textarea
+                            id="prof-address"
+                            className="form-textarea"
                             value={form.address}
                             onChange={(e) =>
                                 setForm((p) => ({
@@ -134,20 +155,25 @@ export default function ProfilePage() {
                                     address: e.target.value,
                                 }))
                             }
+                            rows={3}
+                            placeholder="Street, building, apartment/floor details..."
                         />
                     </div>
-                    <div className="profile-edit-actions">
+
+                    <div className="profile-actions" style={{ marginTop: "8px" }}>
                         <button
                             type="submit"
                             className="btn btn-primary"
                             disabled={saving}
+                            style={{ flex: 1 }}
                         >
-                            {saving ? "Saving..." : "Save"}
+                            {saving ? "Saving Changes..." : "Save Changes"}
                         </button>
                         <button
                             type="button"
                             className="btn btn-outline"
                             onClick={() => setEditing(false)}
+                            style={{ flex: 1 }}
                         >
                             Cancel
                         </button>

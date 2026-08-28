@@ -7,6 +7,7 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
             await login(email, password);
             navigate("/");
         } catch (err) {
-            setError(err.response?.data?.message || "Login failed.");
+            setError(err.response?.data?.message || "Invalid email or password. Please try again.");
         } finally {
             setSubmitting(false);
         }
@@ -33,12 +34,12 @@ export default function LoginPage() {
         <div className="auth-page">
             <div className="auth-card">
                 <h2>Welcome Back</h2>
-                <p className="auth-subtitle">Sign in to your account</p>
+                <p className="auth-subtitle">Sign in to track orders and save your favorites</p>
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
                         <label htmlFor="email" className="form-label">
-                            Email
+                            Email Address
                         </label>
                         <input
                             id="email"
@@ -47,6 +48,7 @@ export default function LoginPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="you@example.com"
+                            autoComplete="email"
                             required
                         />
                     </div>
@@ -55,15 +57,26 @@ export default function LoginPage() {
                         <label htmlFor="password" className="form-label">
                             Password
                         </label>
-                        <input
-                            id="password"
-                            type="password"
-                            className="form-input"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                className="form-input"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                autoComplete="current-password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? "Hide" : "Show"}
+                            </button>
+                        </div>
                     </div>
 
                     {error && <div className="form-error">{error}</div>}
@@ -72,14 +85,17 @@ export default function LoginPage() {
                         type="submit"
                         className="btn btn-primary btn-block"
                         disabled={submitting}
+                        style={{ padding: "14px 20px", marginTop: "4px" }}
                     >
-                        {submitting ? "Signing in..." : "Sign In"}
+                        {submitting ? "Signing in..." : "Sign In to Account"}
                     </button>
                 </form>
 
                 <p className="auth-footer">
                     Don't have an account?{" "}
-                    <Link to="/register">Create one</Link>
+                    <Link to="/register" style={{ color: "var(--c-primary)" }}>
+                        Create one here
+                    </Link>
                 </p>
             </div>
         </div>
