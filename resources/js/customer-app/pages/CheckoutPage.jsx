@@ -168,11 +168,11 @@ export default function CheckoutPage({ slug }) {
                 </div>
 
                 {/* Customer Details Verification */}
-                <div className="checkout-summary" style={{ background: "var(--c-surface-elevated)" }}>
-                    <h3 style={{ fontSize: "14px", marginBottom: "8px" }}>
+                <div className="checkout-customer-card">
+                    <div className="checkout-customer-title">
                         👤 Ordering as {customer.name}
-                    </h3>
-                    <div style={{ fontSize: "13px", color: "var(--c-text-muted)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    </div>
+                    <div className="checkout-customer-details">
                         <div>📞 Phone: <strong style={{ color: "var(--c-text)" }}>{customer.phone_number}</strong></div>
                         {type === "delivery" && (
                             <div>
@@ -214,22 +214,25 @@ export default function CheckoutPage({ slug }) {
 
                 {error && <div className="form-error">{error}</div>}
 
-                <button
-                    type="submit"
-                    className="btn btn-primary btn-block"
-                    disabled={submitting}
-                    style={{ padding: "15px 24px", fontSize: "15px" }}
-                >
-                    {submitting ? (
-                        <>
-                            <div className="spinner" style={{ width: "20px", height: "20px", borderWidth: "2px" }} />
-                            <span>Confirming Order...</span>
-                        </>
-                    ) : (
-                        <span>Confirm & Place Order — {total.toFixed(2)} EGP</span>
-                    )}
-                </button>
+                <div className="checkout-submit-wrapper">
+                    <button
+                        type="submit"
+                        className="btn btn-primary btn-block"
+                        disabled={submitting}
+                        style={{ padding: "16px 24px", fontSize: "15px" }}
+                    >
+                        {submitting ? (
+                            <>
+                                <div className="spinner" style={{ width: "20px", height: "20px", borderWidth: "2px" }} />
+                                <span>Confirming Order...</span>
+                            </>
+                        ) : (
+                            <span>Confirm & Place Order — {total.toFixed(2)} EGP</span>
+                        )}
+                    </button>
+                </div>
             </form>
         </div>
     );
 }
+
