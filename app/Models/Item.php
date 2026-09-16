@@ -14,6 +14,13 @@ class Item extends Model
 
     protected $fillable = ['name', 'price', 'category', 'description', 'restaurant_id'];
 
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+        ];
+    }
+
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'order_items')->withPivot(['quantity']);

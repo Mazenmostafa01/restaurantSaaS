@@ -10,6 +10,8 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Traits\Calculation;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -17,14 +19,14 @@ class OrderController extends Controller
 {
     use Calculation;
 
-    public function index()
+    public function index(): View
     {
         $orders = Order::orderBy('created_at', 'desc')->paginate(15);
 
         return view('admin.orders.index', compact('orders'));
     }
 
-    public function create()
+    public function create(): View
     {
         $items = Item::orderBy('category')->get();
         $categories = ItemCategoryEnum::cases();
@@ -34,15 +36,20 @@ class OrderController extends Controller
         return view('admin.orders.create', compact('items', 'categories', 'orderType', 'customers'));
     }
 
-    public function store(OrderCreateRequest $request)
+    public function store(OrderCreateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
+        $items = Item::whereIn('id', array_keys($validated['items']))->get()->keyBy('id');
+
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemId => $selectedItem) {
-                $item = Item::findOrFail($itemId);
+                if (! isset($items[$itemId])) {
+                    continue;
+                }
+                $item = $items[$itemId];
                 $subTotal += $this->subTotal($item->price, $selectedItem['quantity']);
                 $orderDetails[$itemId] = [
                     'quantity' => $selectedItem['quantity'],
@@ -62,9 +69,7 @@ class OrderController extends Controller
                 'customer_id' => $validated['customer_id'] ?? null,
             ]);
 
-            foreach ($orderDetails as $itemId => $detail) {
-                $order->items()->attach($itemId, ['quantity' => $detail['quantity']]);
-            }
+            $order->items()->attach($orderDetails);
 
             DB::commit();
 
@@ -72,16 +77,14 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::info('order create error', [$e]);
+            Log::error('order create error', ['error' => $e->getMessage()]);
 
             return back()->with('error', 'Failed to create order.');
         }
     }
 
-    public function edit(Order $order)
+    public function edit(Order $order): View
     {
-        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
-
         $customers = Customer::select('id', 'name')->get();
         $orderType = OrderTypeEnum::cases();
         $items = Item::orderBy('category')->get();
@@ -89,14 +92,13 @@ class OrderController extends Controller
         return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items'));
     }
 
-    public function update(OrderUpdateRequest $request, Order $order)
+    public function update(OrderUpdateRequest $request, Order $order): RedirectResponse
     {
-        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
-
         $validated = $request->validated();
         $subTotal = 0;
         $orderDetails = [];
         $items = Item::whereIn('id', array_keys($validated['items']))->get()->keyBy('id');
+
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemId => $selectedItem) {
@@ -130,16 +132,14 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::info('order update error', [$e]);
+            Log::error('order update error', ['error' => $e->getMessage()]);
 
             return back()->with('error', 'Failed to update order.');
         }
     }
 
-    public function delete(Order $order)
+    public function delete(Order $order): RedirectResponse
     {
-        abort_unless(auth()->user()->hasRole('Admin'), 403, 'Unauthorized action.');
-
         DB::beginTransaction();
         try {
             $order->items()->detach();
@@ -149,13 +149,13 @@ class OrderController extends Controller
             return redirect()->route('orders.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::info('delete order error', [$e]);
+            Log::error('delete order error', ['error' => $e->getMessage()]);
 
             return back()->with('error', 'Failed to delete order.');
         }
     }
 
-    private function generateOrderNumber()
+    private function generateOrderNumber(): string
     {
         return strtoupper(uniqid());
     }

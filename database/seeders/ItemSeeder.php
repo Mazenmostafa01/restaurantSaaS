@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Enums\ItemCategoryEnum;
 use App\Models\Item;
 use App\Models\Restaurant;

@@ -10,7 +10,6 @@ use App\Services\TenantContext;
 use App\Traits\Calculation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -31,7 +30,7 @@ class CustomerOrderController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        if (! $orders) {
+        if ($orders->isEmpty()) {
             return response()->json([
                 'message' => 'no orders founded',
             ]);
@@ -108,10 +107,16 @@ class CustomerOrderController extends Controller
         $subTotal = 0;
         $orderDetails = [];
 
+        $itemIds = array_column($validated['items'], 'id');
+        $items = Item::whereIn('id', $itemIds)->get()->keyBy('id');
+
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemData) {
-                $item = Item::findOrFail($itemData['id']);
+                if (! isset($items[$itemData['id']])) {
+                    continue;
+                }
+                $item = $items[$itemData['id']];
                 $subTotal += $this->subTotal($item->price, $itemData['quantity']);
                 $orderDetails[$item->id] = ['quantity' => $itemData['quantity']];
             }

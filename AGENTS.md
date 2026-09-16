@@ -12,11 +12,11 @@ one file in this repo, read this one.
 
 ## 1. What this project is (one paragraph)
 
-aklaSaaS is a **multi-tenant Laravel 12 SaaS for restaurants**. One
+aklaSaaS is a **multi-tenant Laravel 13 SaaS for restaurants**. One
 installation serves many restaurants. Each restaurant has staff
 (`admin` + `employee` roles via Spatie) and end customers. Staff use a
 Blade-rendered admin panel at `/`. Customers use a React SPA served
-from `/{restaurant:slug}/...`. Backend is Laravel 12 + MySQL + Reverb
+from `/{restaurant:slug}/...`. Backend is Laravel 13 + MySQL + Reverb
 (WebSockets) + Sanctum (auth) + Spatie (RBAC).
 
 ## 2. The non-negotiable rule: tenancy

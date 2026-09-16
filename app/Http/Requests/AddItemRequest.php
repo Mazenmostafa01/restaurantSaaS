@@ -7,7 +7,6 @@ use App\Services\TenantContext;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 
 class AddItemRequest extends FormRequest
 {
@@ -33,7 +32,7 @@ class AddItemRequest extends FormRequest
         return [
             'name' => ['required', 'string', $nameRule, 'max:100'],
             'price' => ['required', 'numeric', 'min:0'],
-            'category' => ['required', new Enum(ItemCategoryEnum::class)],
+            'category' => ['required', Rule::enum(ItemCategoryEnum::class)],
             'description' => ['nullable', 'string'],
             'images' => ['nullable', 'array', 'max:5'],
             'images.*' => ['image', 'mimes:jpg,png,jpeg', 'max:1024'],

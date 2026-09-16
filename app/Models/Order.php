@@ -14,6 +14,15 @@ class Order extends Model
 
     protected $fillable = ['order_number', 'price', 'tax', 'net', 'type', 'note', 'user_id', 'customer_id', 'restaurant_id'];
 
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'tax' => 'decimal:2',
+            'net' => 'decimal:2',
+        ];
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

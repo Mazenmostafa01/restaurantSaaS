@@ -8,7 +8,6 @@ use App\Services\TenantContext;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\Validator;
 
 class OrderCreateRequest extends FormRequest
@@ -34,7 +33,7 @@ class OrderCreateRequest extends FormRequest
 
         return [
             'customer_id' => ['required_if:type,delivery', 'nullable', $customerRule],
-            'type' => ['required', new Enum(OrderTypeEnum::class)],
+            'type' => ['required', Rule::enum(OrderTypeEnum::class)],
             'items' => 'required|array|min:1',
             'items.*.selected' => 'required_with:items.*.quantity|in:on',
             'items.*.quantity' => 'required_with:items.*.selected|integer|min:1|max:100',

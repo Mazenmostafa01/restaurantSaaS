@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class PermissionRoleSeeder extends Seeder
 {
@@ -12,11 +14,11 @@ class PermissionRoleSeeder extends Seeder
     public function run(): void
     {
         // Create roles
-        $adminRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Admin']);
-        $employeeRole = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Employee']);
+        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
+        $employeeRole = Role::firstOrCreate(['name' => 'Employee']);
 
         // Find the default test user and assign Admin role
-        $user = \App\Models\User::first();
+        $user = User::first();
         if ($user) {
             $user->assignRole($adminRole);
         }

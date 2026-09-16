@@ -1,10 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\Customer\CustomerSpaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Dashboard\DashBoardController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\Api\Customer\CustomerSpaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -23,19 +23,25 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/create', [ItemController::class, 'create'])->name('create');
         Route::post('/items', [ItemController::class, 'store'])->name('store');
         Route::get('/show/{item}', [ItemController::class, 'show'])->name('show');
-        Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
-        Route::put('/{item}', [ItemController::class, 'update'])->name('update');
-        Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
-        Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+
+        Route::middleware('role:Admin')->group(function () {
+            Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
+            Route::put('/{item}', [ItemController::class, 'update'])->name('update');
+            Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
+            Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+        });
     });
 
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/index', [OrderController::class, 'index'])->name('index');
         Route::get('/create', [OrderController::class, 'create'])->name('create');
         Route::post('/orders', [OrderController::class, 'store'])->name('store');
-        Route::get('/edit/{order}', [OrderController::class, 'edit'])->name('edit');
-        Route::put('/update/{order}', [OrderController::class, 'update'])->name('update');
-        Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
+
+        Route::middleware('role:Admin')->group(function () {
+            Route::get('/edit/{order}', [OrderController::class, 'edit'])->name('edit');
+            Route::put('/update/{order}', [OrderController::class, 'update'])->name('update');
+            Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
+        });
     });
 });
 
@@ -44,4 +50,3 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 Route::get('/{restaurant:slug}/{any?}', CustomerSpaController::class)
     ->where('any', '.*')
     ->name('customer.spa');
-

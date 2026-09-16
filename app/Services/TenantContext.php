@@ -33,7 +33,7 @@ class TenantContext
         $this->current = null;
     }
 
-    public function slug()
+    public function slug(): ?string
     {
         return $this->current?->slug;
     }
