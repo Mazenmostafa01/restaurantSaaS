@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\MenuItemResource;
 use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 
@@ -15,25 +16,17 @@ class CustomerMenuController extends Controller
      */
     public function index(): JsonResponse
     {
-        $items = Item::with('attachments')
+        $itemsByCategory = Item::with('attachments')
             ->orderBy('category')
             ->orderBy('name')
             ->get()
             ->groupBy('category');
 
         $menu = [];
-        foreach ($items as $category => $categoryItems) {
+        foreach ($itemsByCategory as $category => $categoryItems) {
             $menu[] = [
                 'category' => $category,
-                'items' => $categoryItems->map(fn ($item) => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'price' => number_format($item->price, 2),
-                    'price_raw' => (float) $item->price,
-                    'description' => $item->description,
-                    'category' => $item->category,
-                    'images' => $item->attachments->map->url(),
-                ]),
+                'items' => MenuItemResource::collection($categoryItems)->resolve(),
             ];
         }
 

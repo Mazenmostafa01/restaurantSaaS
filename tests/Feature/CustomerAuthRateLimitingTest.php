@@ -47,10 +47,9 @@ class CustomerAuthRateLimitingTest extends TestCase
             $response->assertStatus(401);
         }
 
-        // The 6th attempt should return a 429 Too Many Requests
+        // The 6th attempt should return a 429 Too Many Requests even with uppercase email and missing password
         $response = $this->withSession([])->postJson("/api/customer/{$this->restaurant->slug}/login", [
-            'email' => $email,
-            'password' => 'wrongpassword',
+            'email' => strtoupper($email),
         ], $headers);
 
         $response->assertStatus(429);

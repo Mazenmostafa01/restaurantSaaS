@@ -3,13 +3,15 @@
 namespace App\Http\Requests;
 
 use App\Enums\ItemCategoryEnum;
-use App\Services\TenantContext;
+use App\Traits\ScopesValidationToTenant;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class AddItemRequest extends FormRequest
 {
+    use ScopesValidationToTenant;
+
     public function authorize(): bool
     {
         return true;
@@ -22,15 +24,8 @@ class AddItemRequest extends FormRequest
      */
     public function rules(): array
     {
-        $tenantId = app(TenantContext::class)->id();
-        $nameRule = Rule::unique('items', 'name');
-
-        if ($tenantId !== null) {
-            $nameRule->where('restaurant_id', $tenantId);
-        }
-
         return [
-            'name' => ['required', 'string', $nameRule, 'max:100'],
+            'name' => ['required', 'string', $this->tenantUnique('items', 'name'), 'max:100'],
             'price' => ['required', 'numeric', 'min:0'],
             'category' => ['required', Rule::enum(ItemCategoryEnum::class)],
             'description' => ['nullable', 'string'],

@@ -3,156 +3,69 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Services\TenantContext;
+use App\Http\Requests\Customer\CustomerLoginRequest;
+use App\Http\Requests\Customer\CustomerRegisterRequest;
+use App\Http\Resources\CustomerResource;
+use App\Services\CustomerAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\Rules\Password;
 
 class CustomerAuthController extends Controller
 {
-    public function register(Request $request, TenantContext $tenant): JsonResponse
+    public function __construct(private readonly CustomerAuthService $authService) {}
+
+    public function register(CustomerRegisterRequest $request): JsonResponse
     {
-        $email = (string) $request->input('email');
-        $throttleKey = 'customer_register:'.$tenant->id().'|'.$email.'|'.$request->ip();
+        $throttleKey = $this->authService->buildThrottleKey('register', (string) $request->input('email'), (string) $request->ip());
+        $validated = $request->validated();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-
-            return response()->json([
-                'message' => 'Too many registration attempts. Please try again in '.$seconds.' seconds.',
-            ], 429, [
-                'Retry-After' => $seconds,
-            ]);
-        }
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone_number' => ['required', 'string', 'max:20'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-            'address' => ['required', 'string', 'max:255'],
-        ]);
-
-        $exists = Customer::withoutGlobalScopes()
-            ->where('restaurant_id', $tenant->id())
-            ->where(function ($q) use ($validated) {
-                $q->where('email', $validated['email'])
-                    ->orWhere('phone_number', $validated['phone_number']);
-            })
-            ->exists();
-
-        if ($exists) {
-            RateLimiter::hit($throttleKey, 60);
+        if ($this->authService->customerExistsInTenant($validated)) {
+            $this->authService->recordFailedAttempt($throttleKey);
 
             return response()->json([
                 'message' => 'A customer with this email or phone already exists at this restaurant.',
             ], 422);
         }
 
-        $customer = Customer::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'],
-            'password' => $validated['password'],
-            'address' => $validated['address'] ?? null,
-            'restaurant_id' => $tenant->id(),
-        ]);
-
-        // Revoke any existing tokens and create a new one
-        $customer->tokens()->delete();
-        $token = $customer->createToken($tenant->slug())->plainTextToken;
-
-        RateLimiter::clear($throttleKey);
+        ['customer' => $customer, 'token' => $token] = $this->authService->registerCustomer($validated, $throttleKey);
 
         return response()->json([
             'message' => 'Registration successful.',
             'token' => $token,
-            'customer' => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'email' => $customer->email,
-            ],
+            'customer' => new CustomerResource($customer),
         ], 201);
     }
 
-    public function login(Request $request, TenantContext $tenant): JsonResponse
+    public function login(CustomerLoginRequest $request): JsonResponse
     {
-        $email = (string) $request->input('email');
-        $throttleKey = 'customer_login:'.$tenant->id().'|'.$email.'|'.$request->ip();
+        $throttleKey = $this->authService->buildThrottleKey('login', (string) $request->input('email'), (string) $request->ip());
+        $validated = $request->validated();
+        $customer = $this->authService->findAuthenticatedCustomer($validated['email'], $validated['password']);
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
+        if (! $customer) {
+            $this->authService->recordFailedAttempt($throttleKey);
 
-            return response()->json([
-                'message' => 'Too many login attempts. Please try again in '.$seconds.' seconds.',
-            ], 429, [
-                'Retry-After' => $seconds,
-            ]);
+            return response()->json(['message' => 'Invalid credentials.'], 401);
         }
-
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-
-        $customer = Customer::withoutGlobalScopes()
-            ->where('restaurant_id', $tenant->id())
-            ->where('email', $validated['email'])
-            ->first();
-
-        if (! $customer || ! Hash::check($validated['password'], $customer->password)) {
-            RateLimiter::hit($throttleKey, 60);
-
-            return response()->json([
-                'message' => 'Invalid credentials.',
-            ], 401);
-        }
-
-        // Revoke existing tokens for this customer at this restaurant to prevent token reuse
-        $customer->tokens()->delete();
-
-        // Create a new Sanctum token
-        $token = $customer->createToken($tenant->slug())->plainTextToken;
-
-        RateLimiter::clear($throttleKey);
 
         return response()->json([
             'message' => 'Login successful.',
-            'token' => $token,
-            'customer' => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'email' => $customer->email,
-                'address' => $customer->address,
-                'phone_number' => $customer->phone_number,
-            ],
+            'token' => $this->authService->issueLoginToken($customer, $throttleKey),
+            'customer' => new CustomerResource($customer),
         ]);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()
-            ->currentAccessToken()
-            ?->delete();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out.']);
     }
 
     public function user(Request $request): JsonResponse
     {
-        $customer = $request->user();
-
         return response()->json([
-            'customer' => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'email' => $customer->email,
-                'phone_number' => $customer->phone_number,
-                'address' => $customer->address,
-            ],
+            'customer' => new CustomerResource($request->user()),
         ]);
     }
 }

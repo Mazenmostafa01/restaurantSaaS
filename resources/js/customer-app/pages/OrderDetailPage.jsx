@@ -1,27 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createCustomerClient } from "../api/client";
+import { useRestaurant } from "../context/RestaurantContext";
+import { useOrderDetail } from "../hooks/useOrders";
 
-export default function OrderDetailPage({ slug }) {
+export default function OrderDetailPage() {
     const { id } = useParams();
     const { customer, loading: authLoading } = useAuth();
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { restaurant } = useRestaurant();
+    const { order, loading, error } = useOrderDetail(id, customer);
     const [copied, setCopied] = useState(false);
-
-    const client = createCustomerClient(slug);
-    const restaurant = window.__RESTAURANT__ || {};
-
-    useEffect(() => {
-        if (!customer) return;
-        client
-            .get(`/orders/${id}`)
-            .then((res) => setOrder(res.data.order))
-            .catch(() => setError("Order not found or access restricted."))
-            .finally(() => setLoading(false));
-    }, [slug, id, customer]);
 
     const handleCopy = () => {
         if (order?.order_number) {

@@ -1,22 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createCustomerClient } from "../api/client";
+import { useOrders } from "../hooks/useOrders";
 
-export default function OrdersPage({ slug }) {
+export default function OrdersPage() {
     const { customer, loading: authLoading } = useAuth();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const client = createCustomerClient(slug);
-
-    useEffect(() => {
-        if (!customer) return;
-        client
-            .get('/orders')
-            .then((res) => setOrders(res.data.orders.data || []))
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, [slug, customer]);
+    const { orders, loading } = useOrders(customer);
 
     if (!authLoading && !customer) {
         return <Navigate to="/login" replace />;

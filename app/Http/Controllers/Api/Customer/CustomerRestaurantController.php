@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RestaurantResource;
 use App\Models\Restaurant;
 use Illuminate\Http\JsonResponse;
 
@@ -15,17 +16,7 @@ class CustomerRestaurantController extends Controller
     public function show(Restaurant $restaurant): JsonResponse
     {
         return response()->json([
-            'restaurant' => [
-                'id' => $restaurant->id,
-                'name' => $restaurant->name,
-                'slug' => $restaurant->slug,
-                'email' => $restaurant->email,
-                'phone' => $restaurant->phone,
-                'address' => $restaurant->address,
-                'logo' => $restaurant->logo_path
-                    ? asset('storage/'.$restaurant->logo_path)
-                    : null,
-            ],
+            'restaurant' => new RestaurantResource($restaurant),
         ]);
     }
 }

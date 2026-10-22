@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Restaurant;
@@ -107,13 +108,16 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
             'user_id' => $this->adminUser->id,
         ]);
 
-        // Employee attempts to access admin-only item edit
-        $response = $this->actingAs($this->employeeUser)->get(route('items.edit', $item));
-        $response->assertStatus(403);
+        $this->actingAs($this->employeeUser)->get(route('items.edit', $item))->assertStatus(403);
+        $this->actingAs($this->employeeUser)->put(route('items.update', $item), [])->assertStatus(403);
+        $this->actingAs($this->employeeUser)->delete(route('items.delete', $item))->assertStatus(403);
+        $this->actingAs($this->employeeUser)->post(route('items.restore', $item->id))->assertStatus(403);
 
-        // Employee attempts to access admin-only order edit
-        $response = $this->actingAs($this->employeeUser)->get(route('orders.edit', $order));
-        $response->assertStatus(403);
+        $this->actingAs($this->employeeUser)->get(route('orders.edit', $order))->assertStatus(403);
+        $this->actingAs($this->employeeUser)->put(route('orders.update', $order), [])->assertStatus(403);
+        $this->actingAs($this->employeeUser)->delete(route('orders.delete', $order))->assertStatus(403);
+
+        $this->actingAs($this->employeeUser)->get(route('dashboard'))->assertStatus(403);
     }
 
     public function test_admin_can_access_admin_routes(): void
@@ -125,11 +129,11 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
             'restaurant_id' => $this->restaurant->id,
         ]);
 
-        $response = $this->actingAs($this->adminUser)->get(route('items.edit', $item));
-        $response->assertStatus(200);
+        $this->actingAs($this->adminUser)->get(route('items.edit', $item))->assertStatus(200);
+        $this->actingAs($this->adminUser)->get(route('dashboard'))->assertStatus(200);
     }
 
-    public function test_order_creation_stores_order_with_batch_items(): void
+    public function test_order_creation_stores_order_with_batch_items_and_ignores_empty_rows(): void
     {
         $item1 = Item::create([
             'name' => 'Pizza A',
@@ -145,11 +149,19 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
             'restaurant_id' => $this->restaurant->id,
         ]);
 
+        $item3 = Item::create([
+            'name' => 'Unchecked Item',
+            'price' => 50.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
         $response = $this->actingAs($this->adminUser)->post(route('orders.store'), [
             'type' => 'take_away',
             'items' => [
                 $item1->id => ['selected' => 'on', 'quantity' => 2],
                 $item2->id => ['selected' => 'on', 'quantity' => 1],
+                $item3->id => [],
             ],
             'note' => 'Extra crispy',
         ]);
@@ -166,5 +178,104 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
 
         $createdOrder = Order::latest('id')->first();
         $this->assertCount(2, $createdOrder->items);
+    }
+
+    public function test_dashboard_analytics_service_aggregates_tenant_sales_and_isolates_other_tenants(): void
+    {
+        $item = Item::create([
+            'name' => 'Truffle Pizza',
+            'price' => 20.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $this->actingAs($this->adminUser)->post(route('orders.store'), [
+            'type' => 'take_away',
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 3],
+            ],
+        ]);
+
+        // Create a second tenant with its own item and order to prove tenant isolation on SQL join
+        $otherRestaurant = Restaurant::create([
+            'name' => 'Burger Barn',
+            'slug' => 'burger-barn',
+            'email' => 'info@burgerbarn.com',
+            'phone' => '9998887777',
+            'address' => '202 Burger Ave',
+            'is_active' => true,
+        ]);
+
+        $otherOrder = Order::withoutGlobalScopes()->create([
+            'order_number' => 'OTHER-1',
+            'price' => 500.00,
+            'tax' => 70.00,
+            'net' => 570.00,
+            'type' => 'take_away',
+            'restaurant_id' => $otherRestaurant->id,
+        ]);
+        $otherOrder->items()->attach([$item->id => ['quantity' => 10]]);
+
+        $response = $this->actingAs($this->adminUser)->get(route('dashboard'));
+        $response->assertStatus(200);
+        $response->assertViewHas('topItems', function ($topItems): bool {
+            return $topItems->count() === 1
+                && $topItems->first()->name === 'Truffle Pizza'
+                && (float) $topItems->first()->total_sales === 60.0;
+        });
+    }
+
+    public function test_customer_order_rejects_soft_deleted_items_and_profile_update_preserves_non_null_address(): void
+    {
+        $activeItem = Item::create([
+            'name' => 'Active Pasta',
+            'price' => 30.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $trashedItem = Item::create([
+            'name' => 'Trashed Pasta',
+            'price' => 25.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+        $trashedItem->delete();
+
+        $customer = Customer::create([
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'password123',
+            'phone_number' => '01012345678',
+            'address' => '42 Nile St',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $token = $customer->createToken($this->restaurant->slug)->plainTextToken;
+        $headers = ['Authorization' => 'Bearer '.$token];
+
+        // Ordering soft-deleted item fails with 422
+        $this->postJson("/api/customer/{$this->restaurant->slug}/orders", [
+            'type' => 'take_away',
+            'items' => [
+                ['id' => $trashedItem->id, 'quantity' => 1],
+            ],
+        ], $headers)->assertStatus(422);
+
+        // Ordering active item succeeds with 201
+        $this->postJson("/api/customer/{$this->restaurant->slug}/orders", [
+            'type' => 'take_away',
+            'items' => [
+                ['id' => $activeItem->id, 'quantity' => 2],
+            ],
+        ], $headers)->assertStatus(201)->assertJsonPath('order.net', '68.40');
+
+        // Updating profile with empty address preserves existing address instead of throwing 500
+        $this->putJson("/api/customer/{$this->restaurant->slug}/profile", [
+            'name' => 'Jane Updated',
+            'address' => '',
+        ], $headers)->assertStatus(200)
+            ->assertJsonPath('customer.name', 'Jane Updated')
+            ->assertJsonPath('customer.address', '42 Nile St');
     }
 }

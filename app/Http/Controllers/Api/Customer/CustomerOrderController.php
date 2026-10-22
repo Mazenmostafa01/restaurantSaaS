@@ -2,52 +2,41 @@
 
 namespace App\Http\Controllers\Api\Customer;
 
+use App\DTOs\OrderWriteData;
 use App\Http\Controllers\Controller;
-use App\Models\Item;
+use App\Http\Requests\Customer\CustomerOrderStoreRequest;
+use App\Http\Resources\OrderResource;
+use App\Http\Resources\OrderSummaryResource;
 use App\Models\Order;
 use App\Models\Restaurant;
-use App\Services\TenantContext;
-use App\Traits\Calculation;
+use App\Services\OrderService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class CustomerOrderController extends Controller
 {
-    use Calculation;
+    public function __construct(private readonly OrderService $orderService) {}
 
     /**
      * List the authenticated customer's orders for this restaurant.
      */
     public function index(Request $request): JsonResponse
     {
-        $customer = $request->user();
-
-        $orders = Order::where('customer_id', $customer->id)
-            ->with('items')
+        $orders = Order::where('customer_id', $request->user()->id)
+            ->withCount('items')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         if ($orders->isEmpty()) {
-            return response()->json([
-                'message' => 'no orders founded',
-            ]);
+            return response()->json(['message' => 'no orders founded']);
         }
 
         return response()->json([
-            'orders' => $orders->through(fn ($order) => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'price' => number_format($order->price, 2),
-                'tax' => number_format($order->tax, 2),
-                'net' => number_format($order->net, 2),
-                'type' => $order->type,
-                'note' => $order->note,
-                'items_count' => $order->items->count(),
-                'created_at' => $order->created_at->toDateTimeString(),
-            ]),
+            'orders' => $orders->through(
+                static fn (Order $order): array => (new OrderSummaryResource($order))->resolve($request)
+            ),
         ]);
     }
 
@@ -56,110 +45,39 @@ class CustomerOrderController extends Controller
      */
     public function show(Request $request, Restaurant $restaurant, Order $order): JsonResponse
     {
-        $customer = $request->user();
-
-        if ($order->customer_id !== $customer->id) {
+        if ($order->customer_id !== $request->user()->id) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
 
         $order->load('items');
 
         return response()->json([
-            'order' => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'price' => number_format($order->price, 2),
-                'tax' => number_format($order->tax, 2),
-                'net' => number_format($order->net, 2),
-                'type' => $order->type,
-                'note' => $order->note,
-                'created_at' => $order->created_at->toDateTimeString(),
-                'items' => $order->items->map(fn ($item) => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'price' => number_format($item->price, 2),
-                    'quantity' => $item->pivot->quantity,
-                ]),
-            ],
+            'order' => new OrderResource($order),
         ]);
     }
 
     /**
      * Place a new order as a customer.
      */
-    public function store(Request $request): JsonResponse
+    public function store(CustomerOrderStoreRequest $request): JsonResponse
     {
-        $tenantId = app(TenantContext::class)->id();
-
-        $validated = $request->validate([
-            'type' => ['required', 'in:take_away,delivery'],
-            'note' => ['nullable', 'string', 'max:500'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.id' => [
-                'required',
-                'integer',
-                Rule::exists('items', 'id')->where('restaurant_id', $tenantId),
-            ],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
-        ]);
-
-        $customer = $request->user();
-        $subTotal = 0;
-        $orderDetails = [];
-
-        $itemIds = array_column($validated['items'], 'id');
-        $items = Item::whereIn('id', $itemIds)->get()->keyBy('id');
-
-        DB::beginTransaction();
         try {
-            foreach ($validated['items'] as $itemData) {
-                if (! isset($items[$itemData['id']])) {
-                    continue;
-                }
-                $item = $items[$itemData['id']];
-                $subTotal += $this->subTotal($item->price, $itemData['quantity']);
-                $orderDetails[$item->id] = ['quantity' => $itemData['quantity']];
-            }
-
-            $tax = $this->tax($subTotal);
-            $netTotal = $subTotal + $tax;
-
-            $order = Order::create([
-                'order_number' => $this->generateOrderNumber(),
-                'price' => $subTotal,
-                'tax' => $tax,
-                'net' => $netTotal,
-                'type' => $validated['type'],
-                'note' => $validated['note'] ?? null,
-                'user_id' => null,
-                'customer_id' => $customer->id,
-            ]);
-
-            $order->items()->attach($orderDetails);
-
-            DB::commit();
+            $order = $this->orderService->createOrder(OrderWriteData::fromCustomerRequest($request));
 
             return response()->json([
                 'message' => 'Order placed successfully.',
                 'order' => [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
-                    'net' => number_format($netTotal, 2),
+                    'net' => number_format((float) $order->net, 2),
                 ],
             ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Customer order creation failed', ['error' => $e->getMessage()]);
+        } catch (Exception $exception) {
+            Log::error('Customer order creation failed', ['exception' => $exception]);
 
             return response()->json([
                 'message' => 'Failed to place order. Please try again.',
             ], 500);
         }
-    }
-
-    private function generateOrderNumber(): string
-    {
-        return 'C-'.strtoupper(uniqid());
     }
 }

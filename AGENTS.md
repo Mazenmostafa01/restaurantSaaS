@@ -162,9 +162,9 @@ This is the convention in `AddItemRequest`, `UpdateItemRequest`,
 ### Tax
 
 - Flat 14%. `App\Traits\Calculation::tax($subTotal) = $subTotal * 0.14`.
-- Used in `OrderController::store`, `OrderController::update`,
-  `CustomerOrderController::store`. If you add a third order-creating
-  path, use the trait.
+- Used in `OrderService` (which powers `OrderController::store`, `OrderController::update`,
+  and `CustomerOrderController::store`). If you add another order-creating
+  path, delegate to `OrderService` or use the trait.
 
 ## 6. Patterns to avoid
 
@@ -175,7 +175,7 @@ This is the convention in `AddItemRequest`, `UpdateItemRequest`,
   declaration. (Existing inline checks are being phased out; the
   Spatie middleware aliases are already registered in
   `bootstrap/app.php`.)
-- **Don't write raw `DB::` joins.** Use Eloquent + relationships.
+- **Prefer Eloquent + relationships for standard CRUD; use SQL joins / `DB::raw` for high-volume analytics and aggregations.** Because `TenantScope` and `SoftDeletes` only apply to the base model of a query, any manual `->join()` on a tenant table (e.g. `orders`) **must** explicitly filter `->where('<table>.restaurant_id', $tenantId)` and `->whereNull('<table>.deleted_at')` both to enforce tenant isolation and to hit MySQL composite indexes like `idx_orders_restaurant_date`.
 - **Don't use `$casts` property** on models — use the `casts()` method.
 - **Don't use Tailwind v3 utilities** (e.g. `bg-opacity-50`). v4 uses
   `bg-black/50` syntax. See `.github/copilot-instructions.md` for the

@@ -1,62 +1,29 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { createCustomerClient } from "../api/client";
+import React, { useState } from "react";
+import { useRestaurant } from "../context/RestaurantContext";
 import { useCart } from "../context/CartContext";
+import { useMenu } from "../hooks/useMenu";
 import MenuCard from "../components/menu/MenuCard";
 import CategoryTabs from "../components/menu/CategoryTabs";
 import DishDetailModal from "../components/menu/DishDetailModal";
 
-export default function MenuPage({ slug }) {
-    const [menu, setMenu] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [activeCategory, setActiveCategory] = useState("all");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [error, setError] = useState(null);
+export default function MenuPage() {
+    const { restaurant } = useRestaurant();
+    const { addItem } = useCart();
+    const {
+        loading,
+        error,
+        categories,
+        allItems,
+        categoryCounts,
+        filteredItems,
+        activeCategory,
+        setActiveCategory,
+        searchQuery,
+        setSearchQuery,
+    } = useMenu();
+
     const [selectedDish, setSelectedDish] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
-    const client = createCustomerClient(slug);
-    const { addItem } = useCart();
-    const restaurant = window.__RESTAURANT__ || {};
-
-    useEffect(() => {
-        setLoading(true);
-        setError(null);
-        client
-            .get('/menu')
-            .then((res) => setMenu(res.data.menu || []))
-            .catch(() => setError("Unable to load menu. Please refresh or try again later."))
-            .finally(() => setLoading(false));
-    }, [slug]);
-
-    const categories = useMemo(() => menu.map((g) => g.category), [menu]);
-
-    const allItems = useMemo(() => menu.flatMap((g) => g.items), [menu]);
-
-    const categoryCounts = useMemo(() => {
-        const counts = {};
-        menu.forEach((g) => {
-            counts[g.category] = g.items.length;
-        });
-        return counts;
-    }, [menu]);
-
-    const filteredItems = useMemo(() => {
-        let items =
-            activeCategory === "all"
-                ? allItems
-                : menu.find((g) => g.category === activeCategory)?.items || [];
-
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase();
-            items = items.filter(
-                (item) =>
-                    item.name.toLowerCase().includes(q) ||
-                    (item.description && item.description.toLowerCase().includes(q)),
-            );
-        }
-
-        return items;
-    }, [activeCategory, menu, allItems, searchQuery]);
 
     const handleOpenDishModal = (dish) => {
         setSelectedDish(dish);
@@ -66,10 +33,6 @@ export default function MenuPage({ slug }) {
     const handleCloseDishModal = () => {
         setIsModalOpen(false);
         setSelectedDish(null);
-    };
-
-    const handleAddToCartFromModal = (dish, quantity) => {
-        addItem(dish, quantity);
     };
 
     if (loading) {
@@ -239,7 +202,7 @@ export default function MenuPage({ slug }) {
                 item={selectedDish}
                 isOpen={isModalOpen}
                 onClose={handleCloseDishModal}
-                onAddToCart={handleAddToCartFromModal}
+                onAddToCart={addItem}
             />
         </div>
     );

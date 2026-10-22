@@ -16,7 +16,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         return view('welcome');
     })->name('home');
 
-    Route::get('/dashboard', DashBoardController::class)->name('dashboard');
+    Route::get('/dashboard', DashBoardController::class)
+        ->middleware('role:Admin')
+        ->name('dashboard');
 
     Route::prefix('items')->name('items.')->group(function () {
         Route::get('/index', [ItemController::class, 'index'])->name('index');

@@ -47,6 +47,12 @@
             <div class="mb-4">
                 <label for="image" class="mb-2 block font-semibold text-gray-700">Upload images</label>
                 <input type="file" name="images[]" multiple>
+                @error('images')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('images.*')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
             <button type="submit" class="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Create
                 Item</button>

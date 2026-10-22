@@ -5,23 +5,22 @@ import React, {
     useEffect,
     useCallback,
     useMemo,
-} from 'react';
-import { createCustomerClient, getToken, saveToken, removeToken } from '../api/client';
+} from "react";
+import { getToken, saveToken, removeToken } from "../api/client";
+import { useRestaurant } from "./RestaurantContext";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children, slug }) {
+export function AuthProvider({ children }) {
+    const { slug, api } = useRestaurant();
     const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
-    const client = useMemo(() => createCustomerClient(slug), [slug]);
 
-    // Check if customer is already logged in on mount by verifying token
     useEffect(() => {
         const token = getToken(slug);
         if (token) {
-            client
-                .get('/user')
-                .then((res) => setCustomer(res.data.customer))
+            api.fetchCurrentCustomer()
+                .then((currentCustomer) => setCustomer(currentCustomer))
                 .catch(() => {
                     removeToken(slug);
                     setCustomer(null);
@@ -30,60 +29,60 @@ export function AuthProvider({ children, slug }) {
         } else {
             setLoading(false);
         }
-    }, [slug, client]);
+    }, [slug, api]);
 
     const login = useCallback(
         async (email, password) => {
-            const res = await client.post('/login', {
-                email,
-                password,
-            });
-            saveToken(slug, res.data.token);
-            setCustomer(res.data.customer);
-            return res.data;
+            const authResponse = await api.loginCustomer(email, password);
+            saveToken(slug, authResponse.token);
+            setCustomer(authResponse.customer);
+            return authResponse;
         },
-        [slug, client],
+        [slug, api],
     );
 
     const register = useCallback(
-        async (data) => {
-            const res = await client.post('/register', data);
-            saveToken(slug, res.data.token);
-            setCustomer(res.data.customer);
-            return res.data;
+        async (payload) => {
+            const authResponse = await api.registerCustomer(payload);
+            saveToken(slug, authResponse.token);
+            setCustomer(authResponse.customer);
+            return authResponse;
         },
-        [slug, client],
+        [slug, api],
     );
 
     const logout = useCallback(async () => {
         try {
-            await client.post('/logout');
+            await api.logoutCustomer();
         } finally {
             removeToken(slug);
             setCustomer(null);
         }
-    }, [slug, client]);
+    }, [slug, api]);
 
     const updateProfile = useCallback(
-        async (data) => {
-            const res = await client.put('/profile', data);
-            setCustomer(res.data.customer);
-            return res.data;
+        async (payload) => {
+            const profileResponse = await api.updateCustomerProfile(payload);
+            setCustomer(profileResponse.customer);
+            return profileResponse;
         },
-        [slug, client],
+        [api],
+    );
+
+    const contextValue = useMemo(
+        () => ({
+            customer,
+            loading,
+            login,
+            register,
+            logout,
+            updateProfile,
+        }),
+        [customer, loading, login, register, logout, updateProfile],
     );
 
     return (
-        <AuthContext.Provider
-            value={{
-                customer,
-                loading,
-                login,
-                register,
-                logout,
-                updateProfile,
-            }}
-        >
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );
@@ -91,6 +90,6 @@ export function AuthProvider({ children, slug }) {
 
 export function useAuth() {
     const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
     return ctx;
 }

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { createCustomerClient } from "../api/client";
+import { useRestaurant } from "../context/RestaurantContext";
 
 const QUICK_NOTES = [
     "No onions 🧅",
@@ -13,11 +13,11 @@ const QUICK_NOTES = [
     "Spicy please 🌶️",
 ];
 
-export default function CheckoutPage({ slug }) {
+export default function CheckoutPage() {
     const { customer } = useAuth();
     const { items, subtotal, tax, total, clearCart } = useCart();
+    const { api } = useRestaurant();
     const navigate = useNavigate();
-    const client = createCustomerClient(slug);
 
     const [type, setType] = useState("take_away");
     const [note, setNote] = useState("");
@@ -85,9 +85,9 @@ export default function CheckoutPage({ slug }) {
                 items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
             };
 
-            const res = await client.post('/orders', payload);
+            const orderResponse = await api.placeOrder(payload);
             clearCart();
-            navigate(`/orders/${res.data.order.id}`);
+            navigate(`/orders/${orderResponse.order.id}`);
         } catch (err) {
             setError(err.response?.data?.message || "Failed to place order. Please try again.");
         } finally {
@@ -235,4 +235,3 @@ export default function CheckoutPage({ slug }) {
         </div>
     );
 }
-

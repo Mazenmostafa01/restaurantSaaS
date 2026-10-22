@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\OrderTypeEnum;
 use App\Models\Item;
-use App\Services\TenantContext;
+use App\Traits\ScopesValidationToTenant;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -12,9 +12,28 @@ use Illuminate\Validation\Validator;
 
 class OrderCreateRequest extends FormRequest
 {
+    use ScopesValidationToTenant;
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items');
+
+        if (! is_array($items)) {
+            return;
+        }
+
+        $filteredItems = array_filter(
+            $items,
+            static fn (mixed $item): bool => is_array($item)
+                && (($item['selected'] ?? null) !== null || ($item['quantity'] ?? null) !== null)
+        );
+
+        $this->merge(['items' => $filteredItems]);
     }
 
     /**
@@ -24,20 +43,13 @@ class OrderCreateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $tenantId = app(TenantContext::class)->id();
-        $customerRule = Rule::exists('customers', 'id');
-
-        if ($tenantId !== null) {
-            $customerRule->where('restaurant_id', $tenantId);
-        }
-
         return [
-            'customer_id' => ['required_if:type,delivery', 'nullable', $customerRule],
+            'customer_id' => ['required_if:type,delivery', 'nullable', $this->tenantExists('customers', 'id')],
             'type' => ['required', Rule::enum(OrderTypeEnum::class)],
-            'items' => 'required|array|min:1',
-            'items.*.selected' => 'required_with:items.*.quantity|in:on',
-            'items.*.quantity' => 'required_with:items.*.selected|integer|min:1|max:100',
-            'note' => 'nullable|string',
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.selected' => ['required', 'in:on'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
+            'note' => ['nullable', 'string'],
         ];
     }
 
@@ -55,18 +67,17 @@ class OrderCreateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $items = $this->input('items', []);
 
-            if (! is_array($items)) {
+            if (! is_array($items) || $items === []) {
                 return;
             }
 
             $itemIds = array_keys($items);
-
-            if ($itemIds === []) {
-                return;
-            }
-
             $validItemCount = Item::whereIn('id', $itemIds)->count();
 
             if ($validItemCount !== count($itemIds)) {

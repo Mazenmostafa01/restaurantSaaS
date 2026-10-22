@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\OrderWriteData;
 use App\Enums\ItemCategoryEnum;
 use App\Enums\OrderTypeEnum;
 use App\Http\Requests\OrderCreateRequest;
@@ -9,15 +10,15 @@ use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
-use App\Traits\Calculation;
+use App\Services\OrderService;
+use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    use Calculation;
+    public function __construct(private readonly OrderService $orderService) {}
 
     public function index(): View
     {
@@ -38,46 +39,12 @@ class OrderController extends Controller
 
     public function store(OrderCreateRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-        $subTotal = 0;
-        $orderDetails = [];
-        $items = Item::whereIn('id', array_keys($validated['items']))->get()->keyBy('id');
-
-        DB::beginTransaction();
         try {
-            foreach ($validated['items'] as $itemId => $selectedItem) {
-                if (! isset($items[$itemId])) {
-                    continue;
-                }
-                $item = $items[$itemId];
-                $subTotal += $this->subTotal($item->price, $selectedItem['quantity']);
-                $orderDetails[$itemId] = [
-                    'quantity' => $selectedItem['quantity'],
-                ];
-            }
-            $tax = $this->tax($subTotal);
-            $netTotal = $subTotal + $tax;
-
-            $order = Order::create([
-                'order_number' => $this->generateOrderNumber(),
-                'price' => $subTotal,
-                'tax' => $tax,
-                'net' => $netTotal,
-                'type' => $validated['type'],
-                'note' => $validated['note'] ?? null,
-                'user_id' => auth()->id(),
-                'customer_id' => $validated['customer_id'] ?? null,
-            ]);
-
-            $order->items()->attach($orderDetails);
-
-            DB::commit();
+            $this->orderService->createOrder(OrderWriteData::fromAdminRequest($request));
 
             return redirect()->route('orders.create');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('order create error', ['error' => $e->getMessage()]);
+        } catch (Exception $exception) {
+            Log::error('order create error', ['exception' => $exception]);
 
             return back()->with('error', 'Failed to create order.');
         }
@@ -94,45 +61,12 @@ class OrderController extends Controller
 
     public function update(OrderUpdateRequest $request, Order $order): RedirectResponse
     {
-        $validated = $request->validated();
-        $subTotal = 0;
-        $orderDetails = [];
-        $items = Item::whereIn('id', array_keys($validated['items']))->get()->keyBy('id');
-
-        DB::beginTransaction();
         try {
-            foreach ($validated['items'] as $itemId => $selectedItem) {
-                if (! isset($items[$itemId])) {
-                    continue;
-                }
-                $item = $items[$itemId];
-                $subTotal += $this->subTotal($item->price, $selectedItem['quantity']);
-                $orderDetails[$itemId] = [
-                    'quantity' => $selectedItem['quantity'],
-                ];
-            }
-            $tax = $this->tax($subTotal);
-            $netTotal = $subTotal + $tax;
-
-            $order->update([
-                'price' => $subTotal,
-                'tax' => $tax,
-                'net' => $netTotal,
-                'type' => $validated['type'],
-                'note' => $validated['note'] ?? null,
-                'user_id' => auth()->id(),
-                'customer_id' => $validated['customer_id'] ?? null,
-            ]);
-
-            $order->items()->sync($orderDetails);
-
-            DB::commit();
+            $this->orderService->updateOrder($order, OrderWriteData::fromAdminRequest($request));
 
             return redirect()->route('orders.index');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('order update error', ['error' => $e->getMessage()]);
+        } catch (Exception $exception) {
+            Log::error('order update error', ['exception' => $exception]);
 
             return back()->with('error', 'Failed to update order.');
         }
@@ -140,23 +74,14 @@ class OrderController extends Controller
 
     public function delete(Order $order): RedirectResponse
     {
-        DB::beginTransaction();
         try {
-            $order->items()->detach();
-            $order->delete();
-            DB::commit();
+            $this->orderService->deleteOrder($order);
 
             return redirect()->route('orders.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('delete order error', ['error' => $e->getMessage()]);
+        } catch (Exception $exception) {
+            Log::error('delete order error', ['exception' => $exception]);
 
             return back()->with('error', 'Failed to delete order.');
         }
-    }
-
-    private function generateOrderNumber(): string
-    {
-        return strtoupper(uniqid());
     }
 }

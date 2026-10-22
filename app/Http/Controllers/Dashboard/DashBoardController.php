@@ -3,36 +3,18 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Item;
-use App\Models\Order;
-use Illuminate\Support\Facades\DB;
+use App\Services\DashboardAnalyticsService;
+use Illuminate\Contracts\View\View;
 
 class DashBoardController extends Controller
 {
-    public function __invoke()
+    public function __construct(private readonly DashboardAnalyticsService $analyticsService) {}
+
+    public function __invoke(): View
     {
-        $orders = Order::selectRaw('SUM(net) as total_sales, SUM(tax) as tax, COUNT(*) as total_orders')
-            ->whereBetween('created_at', [now()->startOfYear(), now()])->first();
-
-        $monthlySalesData = Order::selectRaw('MONTH(created_at) as month, SUM(net) as total_sales')
-            ->whereBetween('created_at', [now()->startOfYear(), now()])
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->pluck('total_sales', 'month');
-
-        $yearlyData = [];
-        for ($month = 1; $month <= 12; $month++) {
-            $yearlyData[] = (float) ($monthlySalesData->get($month, 0) ?? 0);
-        }
-
-        $topItems = Item::select('items.name', DB::raw('SUM(order_items.quantity * items.price) as total_sales'))
-            ->join('order_items', 'items.id', '=', 'order_items.item_id')
-            ->join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->whereBetween('orders.created_at', [now()->startOfYear(), now()])
-            ->groupBy('items.id', 'items.name')
-            ->orderByDesc('total_sales')
-            ->limit(5)
-            ->get();
+        $orders = $this->analyticsService->getYearlyOrderSummary();
+        $yearlyData = $this->analyticsService->getYearlyMonthlySales();
+        $topItems = $this->analyticsService->getTopSellingItems();
 
         return view('admin.dashboard.index', compact('orders', 'yearlyData', 'topItems'));
     }
