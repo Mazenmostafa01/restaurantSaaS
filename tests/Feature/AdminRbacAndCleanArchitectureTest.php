@@ -278,4 +278,60 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
             ->assertJsonPath('customer.name', 'Jane Updated')
             ->assertJsonPath('customer.address', '42 Nile St');
     }
+
+    public function test_route_model_binding_blocks_cross_tenant_item_and_order_access(): void
+    {
+        $otherRestaurant = Restaurant::create([
+            'name' => 'Sushi Spot',
+            'slug' => 'sushi-spot',
+            'email' => 'hello@sushispot.com',
+            'phone' => '5551234567',
+            'address' => '99 Tokyo Dr',
+            'is_active' => true,
+        ]);
+
+        $otherItem = Item::withoutGlobalScopes()->create([
+            'name' => 'Dragon Roll',
+            'price' => 22.00,
+            'category' => 'food',
+            'restaurant_id' => $otherRestaurant->id,
+        ]);
+
+        $otherOrder = Order::withoutGlobalScopes()->create([
+            'order_number' => 'SUSHI-1',
+            'price' => 22.00,
+            'tax' => 3.08,
+            'net' => 25.08,
+            'type' => 'take_away',
+            'restaurant_id' => $otherRestaurant->id,
+        ]);
+
+        // Clear any pre-set TenantContext from setUp so the HTTP middleware pipeline resolves it
+        app()->forgetInstance(TenantContext::class);
+
+        $this->actingAs($this->adminUser)->get(route('items.show', $otherItem->id))->assertStatus(404);
+        $this->actingAs($this->adminUser)->get(route('items.edit', $otherItem->id))->assertStatus(404);
+        $this->actingAs($this->adminUser)->put(route('items.update', $otherItem->id), [
+            'name' => 'Hijacked Roll',
+            'price' => 1.00,
+            'category' => 'food',
+        ])->assertStatus(404);
+        $this->actingAs($this->adminUser)->delete(route('items.delete', $otherItem->id))->assertStatus(404);
+
+        $this->actingAs($this->adminUser)->get(route('orders.edit', $otherOrder->id))->assertStatus(404);
+        $this->actingAs($this->adminUser)->put(route('orders.update', $otherOrder->id), [
+            'type' => 'delivery',
+        ])->assertStatus(404);
+        $this->actingAs($this->adminUser)->delete(route('orders.delete', $otherOrder->id))->assertStatus(404);
+
+        // Verify the other tenant's records were not modified or soft-deleted
+        $freshItem = Item::withoutGlobalScopes()->find($otherItem->id);
+        $this->assertNotNull($freshItem);
+        $this->assertNull($freshItem->deleted_at);
+        $this->assertSame('Dragon Roll', $freshItem->name);
+
+        $freshOrder = Order::withoutGlobalScopes()->find($otherOrder->id);
+        $this->assertNotNull($freshOrder);
+        $this->assertNull($freshOrder->deleted_at);
+    }
 }

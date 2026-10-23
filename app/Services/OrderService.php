@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Traits\Calculation;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class OrderService
 {
@@ -96,6 +97,6 @@ class OrderService
 
     private function generateOrderNumber(string $prefix = ''): string
     {
-        return $prefix.strtoupper(uniqid());
+        return $prefix.now()->format('ymd').'-'.Str::upper(Str::random(6));
     }
 }

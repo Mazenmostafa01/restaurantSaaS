@@ -11,6 +11,44 @@
             Add New Item
         </a>
     </header>
+
+    <!-- Search & Filter Bar -->
+    <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <form method="GET" action="{{ route('items.index') }}" class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div class="relative flex-1">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="Search items by name..." 
+                    class="block w-full rounded-xl border-0 py-2.5 pl-9 pr-3 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <select name="category" class="rounded-xl border-0 py-2.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50">
+                    <option value="">All Categories</option>
+                    @foreach ($categories as $cat)
+                        @php $val = is_object($cat) ? $cat->value : $cat; @endphp
+                        <option value="{{ $val }}" {{ request('category') === $val ? 'selected' : '' }}>
+                            {{ ucfirst($val) }}
+                        </option>
+                    @endforeach
+                </select>
+
+                <button type="submit" class="inline-flex items-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors">
+                    Filter
+                </button>
+
+                @if(request()->hasAny(['q', 'category']))
+                    <a href="{{ route('items.index') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                        Reset
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($items as $item)
             <div

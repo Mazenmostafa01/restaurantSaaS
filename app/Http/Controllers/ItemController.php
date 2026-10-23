@@ -11,17 +11,29 @@ use App\Services\ItemService;
 use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ItemController extends Controller
 {
     public function __construct(private readonly ItemService $itemService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $items = Item::withTrashed()->with('attachments')->paginate(15);
+        $query = Item::withTrashed()->with('attachments');
 
-        return view('admin.items.index', compact('items'));
+        if ($term = trim((string) $request->input('q', ''))) {
+            $query->where('name', 'like', "{$term}%");
+        }
+
+        if ($category = $request->input('category')) {
+            $query->where('category', $category);
+        }
+
+        $items = $query->orderBy('category')->orderBy('name')->paginate(15)->withQueryString();
+        $categories = ItemCategoryEnum::cases();
+
+        return view('admin.items.index', compact('items', 'categories'));
     }
 
     public function create(): View
@@ -74,7 +86,7 @@ class ItemController extends Controller
 
     public function delete(Item $item): RedirectResponse
     {
-        $item->delete();
+        $this->itemService->deleteItem($item);
 
         return redirect()->route('items.index')->with('success', 'Item removed.');
     }

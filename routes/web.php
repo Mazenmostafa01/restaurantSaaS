@@ -8,7 +8,9 @@ use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('loginPost');
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('loginPost');
 
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -36,6 +38,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/index', [OrderController::class, 'index'])->name('index');
+        Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('search-customers');
         Route::get('/create', [OrderController::class, 'create'])->name('create');
         Route::post('/orders', [OrderController::class, 'store'])->name('store');
 

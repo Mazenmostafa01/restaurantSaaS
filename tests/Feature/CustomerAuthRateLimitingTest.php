@@ -142,4 +142,19 @@ class CustomerAuthRateLimitingTest extends TestCase
         $response->assertStatus(429);
         $this->assertStringContainsString('Too many registration attempts', $response->json('message'));
     }
+
+    public function test_staff_web_login_rate_limiting_triggers_after_five_attempts(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->post('/login', [
+                'email' => 'admin@restaurant.com',
+                'password' => 'wrongpassword',
+            ])->assertStatus(302);
+        }
+
+        $this->post('/login', [
+            'email' => 'admin@restaurant.com',
+            'password' => 'wrongpassword',
+        ])->assertStatus(429);
+    }
 }

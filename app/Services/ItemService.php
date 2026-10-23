@@ -5,13 +5,14 @@ namespace App\Services;
 use App\DTOs\ItemWriteData;
 use App\Events\ItemUpdateEvent;
 use App\Models\Item;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class ItemService
 {
+    public function __construct(private readonly TenantCacheService $tenantCache) {}
+
     public function createItem(ItemWriteData $itemData): Item
     {
         $storedUploads = $this->writeFilesToDisk($itemData->uploadedImages);
@@ -26,6 +27,10 @@ class ItemService
                 ]);
 
                 $this->attachStoredFiles($item, $storedUploads, hasExistingAttachments: false);
+
+                DB::afterCommit(function () use ($item): void {
+                    $this->tenantCache->forgetMenu((int) $item->restaurant_id);
+                });
 
                 return $item;
             });
@@ -52,7 +57,8 @@ class ItemService
                 $hasExisting = $item->attachments()->exists();
                 $this->attachStoredFiles($item, $storedUploads, $hasExisting);
 
-                DB::afterCommit(static function () use ($item): void {
+                DB::afterCommit(function () use ($item): void {
+                    $this->tenantCache->forgetMenu((int) $item->restaurant_id);
                     event(new ItemUpdateEvent($item));
                 });
 
@@ -68,8 +74,16 @@ class ItemService
     {
         $trashedItem = Item::onlyTrashed()->findOrFail($itemId);
         $trashedItem->restore();
+        $this->tenantCache->forgetMenu((int) $trashedItem->restaurant_id);
 
         return $trashedItem;
+    }
+
+    public function deleteItem(Item $item): void
+    {
+        $tenantId = (int) $item->restaurant_id;
+        $item->delete();
+        $this->tenantCache->forgetMenu($tenantId);
     }
 
     private function writeFilesToDisk(array $images): array

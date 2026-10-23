@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Restaurant;
+use App\Services\TenantCacheService;
 use App\Services\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -11,14 +11,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SetTenantContext
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly TenantCacheService $tenantCache,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
         if ($user && $user->restaurant_id !== null) {
-            $restaurant = Restaurant::find($user->restaurant_id);
+            $restaurant = $this->tenantCache->findRestaurantById((int) $user->restaurant_id);
 
             if ($restaurant && $restaurant->is_active) {
                 $this->tenantContext->set($restaurant);

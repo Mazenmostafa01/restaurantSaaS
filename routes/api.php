@@ -31,8 +31,10 @@ Route::prefix('customer/{restaurant:slug}')
         Route::get('/menu', [CustomerMenuController::class, 'index']);
 
         // Auth
-        Route::post('/register', [CustomerAuthController::class, 'register']);
-        Route::post('/login', [CustomerAuthController::class, 'login']);
+        Route::post('/register', [CustomerAuthController::class, 'register'])
+            ->middleware('throttle:20,1');
+        Route::post('/login', [CustomerAuthController::class, 'login'])
+            ->middleware('throttle:30,1');
     });
 
 // ── Authenticated customer routes ────────────────────────────────────────────

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TenantCacheService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -35,6 +36,29 @@ class Restaurant extends Model
                 $restaurant->slug = Str::slug($restaurant->name);
             }
         });
+
+        static::saved(function (self $restaurant): void {
+            app(TenantCacheService::class)->forgetRestaurant($restaurant);
+        });
+
+        static::deleted(function (self $restaurant): void {
+            app(TenantCacheService::class)->forgetRestaurant($restaurant);
+        });
+    }
+
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        if ($field === 'slug' && is_string($value)) {
+            return app(TenantCacheService::class)->findRestaurantBySlug($value);
+        }
+
+        if ($field === 'id' && (is_int($value) || ctype_digit((string) $value))) {
+            return app(TenantCacheService::class)->findRestaurantById((int) $value);
+        }
+
+        return parent::resolveRouteBinding($value, $field);
     }
 
     public function users(): HasMany

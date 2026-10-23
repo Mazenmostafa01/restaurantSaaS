@@ -9,7 +9,38 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsService
 {
-    public function __construct(private readonly TenantContext $tenant) {}
+    public function __construct(
+        private readonly TenantContext $tenant,
+        private readonly TenantCacheService $tenantCache,
+    ) {}
+
+    /**
+     * @return array{orders: object, yearlyData: list<float>, topItems: \Illuminate\Support\Collection<int, object>}
+     */
+    public function getDashboardData(): array
+    {
+        return $this->tenantCache->rememberDashboard(function (): array {
+            $summary = $this->getYearlyOrderSummary();
+            $topItems = $this->getTopSellingItems();
+
+            $orders = (object) [
+                'total_sales' => (float) ($summary->total_sales ?? 0),
+                'tax' => (float) ($summary->tax ?? 0),
+                'total_orders' => (int) ($summary->total_orders ?? 0),
+            ];
+
+            $cachedTopItems = $topItems->map(static fn ($item): object => (object) [
+                'name' => (string) $item->name,
+                'total_sales' => (float) $item->total_sales,
+            ]);
+
+            return [
+                'orders' => $orders,
+                'yearlyData' => $this->getYearlyMonthlySales(),
+                'topItems' => $cachedTopItems,
+            ];
+        });
+    }
 
     public function getYearlyOrderSummary(): ?Order
     {

@@ -12,10 +12,12 @@ class DashBoardController extends Controller
 
     public function __invoke(): View
     {
-        $orders = $this->analyticsService->getYearlyOrderSummary();
-        $yearlyData = $this->analyticsService->getYearlyMonthlySales();
-        $topItems = $this->analyticsService->getTopSellingItems();
+        $dashboardData = $this->analyticsService->getDashboardData();
 
-        return view('admin.dashboard.index', compact('orders', 'yearlyData', 'topItems'));
+        return view('admin.dashboard.index', [
+            'orders' => $dashboardData['orders'],
+            'yearlyData' => $dashboardData['yearlyData'],
+            'topItems' => $dashboardData['topItems'],
+        ]);
     }
 }

@@ -13,18 +13,41 @@ use App\Models\Order;
 use App\Services\OrderService;
 use Exception;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
     public function __construct(private readonly OrderService $orderService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $orders = Order::orderBy('created_at', 'desc')->paginate(15);
+        $query = Order::query()->with(['customer', 'user']);
+        $this->applyOrderFilters($query, $request);
+        $orders = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return view('admin.orders.index', compact('orders'));
+    }
+
+    public function searchCustomers(Request $request): JsonResponse
+    {
+        $phone = trim((string) $request->input('q', ''));
+
+        if ($phone === '') {
+            $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(20)->get();
+
+            return response()->json(['customers' => $customers]);
+        }
+
+        $customers = Customer::select('id', 'name', 'phone_number')
+            ->where('phone_number', 'like', "{$phone}%")
+            ->limit(20)
+            ->get();
+
+        return response()->json(['customers' => $customers]);
     }
 
     public function create(): View
@@ -32,7 +55,7 @@ class OrderController extends Controller
         $items = Item::orderBy('category')->get();
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
-        $customers = Customer::select('id', 'name')->get();
+        $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(50)->get();
 
         return view('admin.orders.create', compact('items', 'categories', 'orderType', 'customers'));
     }
@@ -52,9 +75,13 @@ class OrderController extends Controller
 
     public function edit(Order $order): View
     {
-        $customers = Customer::select('id', 'name')->get();
         $orderType = OrderTypeEnum::cases();
         $items = Item::orderBy('category')->get();
+        $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(50)->get();
+
+        if ($order->customer && ! $customers->contains('id', $order->customer_id)) {
+            $customers->prepend($order->customer);
+        }
 
         return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items'));
     }
@@ -82,6 +109,23 @@ class OrderController extends Controller
             Log::error('delete order error', ['exception' => $exception]);
 
             return back()->with('error', 'Failed to delete order.');
+        }
+    }
+
+    private function applyOrderFilters(Builder $query, Request $request): void
+    {
+        if ($searchTerm = trim((string) $request->input('q', ''))) {
+            $cleanSearch = ltrim($searchTerm, '#');
+            $query->where(function (Builder $q) use ($cleanSearch, $searchTerm): void {
+                $q->where('order_number', 'like', "{$cleanSearch}%")
+                    ->orWhereHas('customer', function (Builder $customerQuery) use ($searchTerm): void {
+                        $customerQuery->where('phone_number', 'like', "{$searchTerm}%");
+                    });
+            });
+        }
+
+        if ($type = $request->input('type')) {
+            $query->where('type', $type);
         }
     }
 }
