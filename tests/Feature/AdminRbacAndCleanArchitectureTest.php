@@ -87,6 +87,8 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
         $this->assertEquals('15.50', $order->price);
         $this->assertEquals('2.17', $order->tax);
         $this->assertEquals('17.67', $order->net);
+        $this->assertEquals($this->adminUser->id, $order->user->id);
+        $this->assertTrue($this->adminUser->orders->contains($order));
     }
 
     public function test_employee_is_forbidden_from_admin_item_and_order_routes(): void
@@ -130,7 +132,137 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
         ]);
 
         $this->actingAs($this->adminUser)->get(route('items.edit', $item))->assertStatus(200);
+        $this->actingAs($this->adminUser)->get(route('orders.create'))->assertStatus(200);
+        $this->actingAs($this->adminUser)->get(route('orders.index'))->assertStatus(200);
         $this->actingAs($this->adminUser)->get(route('dashboard'))->assertStatus(200);
+    }
+
+    public function test_admin_can_access_orders_edit_and_update_order(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Original Customer',
+            'phone_number' => '01012345678',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $item1 = Item::create([
+            'name' => 'Pizza Margarita',
+            'price' => 15.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $item2 = Item::create([
+            'name' => 'Cola',
+            'price' => 5.00,
+            'category' => 'beverage',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'ORD-101',
+            'price' => 30.00,
+            'tax' => 4.20,
+            'net' => 34.20,
+            'type' => 'delivery',
+            'note' => 'Ring bell',
+            'user_id' => $this->adminUser->id,
+            'customer_id' => $customer->id,
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+        $order->items()->attach([$item1->id => ['quantity' => 2]]);
+
+        // Admin loads edit view
+        $response = $this->actingAs($this->adminUser)->get(route('orders.edit', $order));
+        $response->assertStatus(200);
+        $response->assertSee('ORD-101');
+        $response->assertSee('Original Customer');
+        $response->assertSee('Pizza Margarita');
+
+        // Admin updates the order
+        $updateResponse = $this->actingAs($this->adminUser)->put(route('orders.update', $order), [
+            'type' => 'take_away',
+            'customer_id' => $customer->id,
+            'items' => [
+                $item1->id => ['selected' => 'on', 'quantity' => 1],
+                $item2->id => ['selected' => 'on', 'quantity' => 3],
+            ],
+            'note' => 'Updated note',
+        ]);
+
+        $updateResponse->assertRedirect(route('orders.index'));
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'type' => 'take_away',
+            'note' => 'Updated note',
+            'price' => 30.00,
+            'tax' => 4.20,
+            'net' => 34.20,
+        ]);
+
+        $this->assertCount(2, $order->fresh()->items);
+    }
+
+    public function test_delivery_order_requires_customer_on_create_and_update_while_takeaway_is_optional(): void
+    {
+        $item = Item::create([
+            'name' => 'Pizza Delivery',
+            'price' => 20.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Delivery Client',
+            'phone_number' => '01099998888',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        // 1. Delivery order without customer fails validation
+        $failResponse = $this->actingAs($this->adminUser)->post(route('orders.store'), [
+            'type' => 'delivery',
+            'customer_id' => null,
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 1],
+            ],
+        ]);
+        $failResponse->assertSessionHasErrors(['customer_id' => 'A customer is required for delivery orders.']);
+
+        // 2. Take-away order without customer succeeds
+        $takeawayResponse = $this->actingAs($this->adminUser)->post(route('orders.store'), [
+            'type' => 'take_away',
+            'customer_id' => null,
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 1],
+            ],
+        ]);
+        $takeawayResponse->assertRedirect(route('orders.create'));
+
+        $createdOrder = Order::where('type', 'take_away')->latest('id')->first();
+        $this->assertNotNull($createdOrder);
+        $this->assertNull($createdOrder->customer_id);
+
+        // 3. Updating an order to delivery without customer fails validation
+        $updateFailResponse = $this->actingAs($this->adminUser)->put(route('orders.update', $createdOrder), [
+            'type' => 'delivery',
+            'customer_id' => null,
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 1],
+            ],
+        ]);
+        $updateFailResponse->assertSessionHasErrors(['customer_id' => 'A customer is required for delivery orders.']);
+
+        // 4. Updating an order to delivery with valid customer succeeds
+        $updateSuccessResponse = $this->actingAs($this->adminUser)->put(route('orders.update', $createdOrder), [
+            'type' => 'delivery',
+            'customer_id' => $customer->id,
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 1],
+            ],
+        ]);
+        $updateSuccessResponse->assertRedirect(route('orders.index'));
+        $this->assertEquals($customer->id, $createdOrder->fresh()->customer_id);
     }
 
     public function test_order_creation_stores_order_with_batch_items_and_ignores_empty_rows(): void

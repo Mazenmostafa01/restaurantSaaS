@@ -46,13 +46,79 @@ class CustomerAuthService
      */
     public function customerExistsInTenant(array $validated): bool
     {
+        $existing = $this->findExistingCustomerInTenant($validated);
+
+        return $existing !== null && ! $this->canClaimShadowCustomer($existing, $validated);
+    }
+
+    /**
+     * Look up existing customer matching email or phone in the active tenant.
+     *
+     * Bypass of TenantScope is intentional per docs/architecture.md §2.5:
+     * customer auth checks uniqueness within the explicit tenant ID.
+     *
+     * @param  array{name: string, email: string, phone_number: string, password: string, address?: ?string}  $validated
+     */
+    public function findExistingCustomerInTenant(array $validated): ?Customer
+    {
         return Customer::withoutGlobalScopes()
             ->where('restaurant_id', $this->tenant->id())
             ->where(function ($query) use ($validated): void {
                 $query->where('email', $validated['email'])
                     ->orWhere('phone_number', $validated['phone_number']);
             })
+            ->first();
+    }
+
+    /**
+     * Determines whether an existing customer record can be claimed as a shadow account.
+     * A customer can claim the account if the account was created without a password (phone caller)
+     * and their email does not conflict with another existing registered customer.
+     *
+     * @param  array{name: string, email: string, phone_number: string, password: string, address?: ?string}  $validated
+     */
+    public function canClaimShadowCustomer(?Customer $existingCustomer, array $validated): bool
+    {
+        if (! $existingCustomer) {
+            return false;
+        }
+
+        if ($existingCustomer->password !== null) {
+            return false;
+        }
+
+        if ($existingCustomer->phone_number !== $validated['phone_number']) {
+            return false;
+        }
+
+        $emailTakenByOther = Customer::withoutGlobalScopes()
+            ->where('restaurant_id', $this->tenant->id())
+            ->where('email', $validated['email'])
+            ->where('id', '!=', $existingCustomer->id)
             ->exists();
+
+        return ! $emailTakenByOther;
+    }
+
+    /**
+     * Claim an existing shadow customer by assigning password, email, and updating address.
+     *
+     * @param  array{name: string, email: string, phone_number: string, password: string, address?: ?string}  $validated
+     * @return array{customer: Customer, token: string}
+     */
+    public function claimShadowCustomer(Customer $shadowCustomer, array $validated, string $throttleKey): array
+    {
+        $shadowCustomer->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'address' => $validated['address'] ?? $shadowCustomer->address,
+        ]);
+
+        $token = $this->rotateToken($shadowCustomer);
+        RateLimiter::clear($throttleKey);
+
+        return ['customer' => $shadowCustomer, 'token' => $token];
     }
 
     /**
@@ -86,7 +152,7 @@ class CustomerAuthService
             ->where('email', $email)
             ->first();
 
-        if (! $customer || ! Hash::check($password, $customer->password)) {
+        if (! $customer || ! $customer->password || ! Hash::check($password, $customer->password)) {
             return null;
         }
 

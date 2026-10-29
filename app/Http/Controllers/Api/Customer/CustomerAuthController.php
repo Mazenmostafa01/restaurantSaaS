@@ -19,7 +19,19 @@ class CustomerAuthController extends Controller
         $throttleKey = $this->authService->buildThrottleKey('register', (string) $request->input('email'), (string) $request->ip());
         $validated = $request->validated();
 
-        if ($this->authService->customerExistsInTenant($validated)) {
+        $existingCustomer = $this->authService->findExistingCustomerInTenant($validated);
+
+        if ($existingCustomer) {
+            if ($this->authService->canClaimShadowCustomer($existingCustomer, $validated)) {
+                ['customer' => $customer, 'token' => $token] = $this->authService->claimShadowCustomer($existingCustomer, $validated, $throttleKey);
+
+                return response()->json([
+                    'message' => 'Registration successful. Your existing order history has been linked to your account.',
+                    'token' => $token,
+                    'customer' => new CustomerResource($customer),
+                ], 201);
+            }
+
             $this->authService->recordFailedAttempt($throttleKey);
 
             return response()->json([

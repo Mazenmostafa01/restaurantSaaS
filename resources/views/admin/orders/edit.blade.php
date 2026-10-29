@@ -171,7 +171,28 @@
                         </div>
 
                         <!-- Segmented Order Type Control (Take Away / Delivery) -->
-                        <div class="grid grid-cols-2 gap-1.5 p-1 bg-gray-800/80 rounded-xl border border-gray-700">
+                        <style>
+                            .order-type-btn {
+                                transition: all 0.15s ease-in-out;
+                                border-radius: 0.5rem;
+                                cursor: pointer;
+                            }
+                            .order-type-btn.is-active {
+                                background-color: #f59e0b !important;
+                                color: #111827 !important;
+                                font-weight: 800 !important;
+                                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+                            }
+                            .order-type-btn:not(.is-active) {
+                                background-color: transparent !important;
+                                color: #9ca3af !important;
+                            }
+                            .order-type-btn:not(.is-active):hover {
+                                background-color: #374151 !important;
+                                color: #ffffff !important;
+                            }
+                        </style>
+                        <div class="grid grid-cols-2 gap-1.5 p-1 bg-gray-800 rounded-xl border border-gray-700">
                             @foreach ($orderType as $type)
                                 @php
                                     $typeVal = is_object($type) ? $type->value : $type;
@@ -179,7 +200,7 @@
                                     $isDefault = ($currentType == $typeVal || (is_object($currentType) && $currentType->value == $typeVal));
                                 @endphp
                                 <button type="button" data-order-type="{{ $typeVal }}"
-                                    class="order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all {{ $isDefault ? 'bg-amber-500 text-gray-950 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-gray-700' }}">
+                                    class="order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold {{ $isDefault ? 'is-active' : '' }}">
                                     @if($typeVal === 'take_away')
                                         <span>🥡</span> Take Away
                                     @else
@@ -193,17 +214,32 @@
 
                     <!-- Customer Picker Container -->
                     <div class="p-4 border-b border-gray-100 bg-amber-50/40">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label for="customer_id" class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1">
-                                Customer
-                                <span id="customerRequiredTag" class="hidden text-red-500 font-bold">*</span>
-                            </label>
-                            <span id="customerModeHint" class="text-[11px] text-gray-500">Walk-in Guest</span>
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs font-bold uppercase tracking-wider text-gray-700">
+                                    Customer
+                                </label>
+                                <span id="customerRequiredTag" class="hidden text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                                    Required
+                                </span>
+                            </div>
+                            <button type="button" id="openQuickCustomerModalBtn" class="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                                </svg>
+                                New Caller
+                            </button>
                         </div>
-                        <div class="space-y-2">
+
+                        <!-- Hidden Customer ID input -->
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $order->customer_id) }}">
+
+                        <!-- Search Box with Live Floating Results -->
+                        <div class="relative" id="customerSearchContainer">
                             <div class="relative">
-                                <input type="text" id="customerSearchInput" placeholder="Quick find by phone number..." 
-                                    class="block w-full rounded-lg border-0 py-1.5 pl-8 pr-3 text-xs text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-amber-500 bg-white" />
+                                <input type="text" id="customerSearchInput" placeholder="Search phone (min 4 digits, e.g. 0114)..." 
+                                    autocomplete="off"
+                                    class="block w-full rounded-xl border border-gray-300 py-2 pl-8 pr-8 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm" />
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -216,15 +252,36 @@
                                     </svg>
                                 </span>
                             </div>
-                            <select name="customer_id" id="customer_id" 
-                                class="block w-full rounded-xl border-0 py-2 pl-3 pr-8 text-xs font-medium text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-amber-500 bg-white">
-                                <option value="">Walk-in Diner (No Account)</option>
-                                @foreach ($customers as $customer)
-                                    <option value="{{ $customer->id }}" {{ old('customer_id', $order->customer_id) == $customer->id ? 'selected' : '' }}>
-                                        {{ $customer->name }}{{ $customer->phone_number ? ' (' . $customer->phone_number . ')' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
+
+                            <!-- Live Floating Autocomplete Dropdown -->
+                            <div id="customerResultsDropdown" class="hidden absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-xl bg-white shadow-2xl border border-gray-200 divide-y divide-gray-100">
+                            </div>
+                        </div>
+
+                        <!-- Selected Customer State Card -->
+                        <div id="selectedCustomerCard" class="hidden mt-2.5 p-3 rounded-xl bg-white border border-amber-300 shadow-sm">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 text-xs font-black">
+                                        ✓
+                                    </span>
+                                    <div class="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs font-extrabold text-gray-900 truncate" id="selectedCustomerName"></span>
+                                        <span class="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 tabular-nums shrink-0" id="selectedCustomerPhone"></span>
+                                    </div>
+                                </div>
+                                <button type="button" id="clearSelectedCustomerBtn" class="shrink-0 text-xs font-bold text-gray-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-colors" title="Remove customer">
+                                    ✕ Clear
+                                </button>
+                            </div>
+                            <!-- Responsive Address block -->
+                            <div id="selectedCustomerAddressWrapper" class="hidden mt-2 pt-2 border-t border-amber-100/80 flex items-start gap-1.5 text-xs text-gray-700 bg-amber-50/50 p-2 rounded-lg">
+                                <svg class="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span class="break-words leading-relaxed flex-1" id="selectedCustomerAddress" dir="auto"></span>
+                            </div>
                         </div>
                     </div>
 
@@ -289,6 +346,8 @@
             </div>
         </div>
     </div>
+
+    @include('admin.orders.partials.quick-customer-modal')
 
 @endsection
 
@@ -361,25 +420,16 @@ document.addEventListener('DOMContentLoaded', function () {
         orderTypeInput.value = type;
         orderTypeBtns.forEach(btn => {
             if (btn.dataset.orderType === type) {
-                btn.className = 'order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all bg-amber-500 text-gray-950 shadow-sm';
+                btn.classList.add('is-active');
             } else {
-                btn.className = 'order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white hover:bg-gray-700';
+                btn.classList.remove('is-active');
             }
         });
-
         if (type === 'delivery') {
-            customerRequiredTag.classList.remove('hidden');
-            customerModeHint.textContent = 'Required for Delivery';
-            customerModeHint.className = 'text-[11px] text-amber-600 font-semibold';
-            customerSelect.setAttribute('required', 'required');
-            if (!customerSelect.value) {
-                customerSelect.focus();
-            }
+            customerRequiredTag?.classList.remove('hidden');
         } else {
-            customerRequiredTag.classList.add('hidden');
-            customerModeHint.textContent = 'Walk-in Guest';
-            customerModeHint.className = 'text-[11px] text-gray-500';
-            customerSelect.removeAttribute('required');
+            customerRequiredTag?.classList.add('hidden');
+            customerSearchInput?.classList.remove('ring-2', 'ring-red-500');
         }
     }
 
@@ -390,9 +440,176 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize order type UI
     setOrderType(orderTypeInput.value || 'take_away');
 
-    // Debounced Customer Live Search
+    // Customer Selection & Autocomplete State
+    const customerIdInput = document.getElementById('customer_id');
     const customerSearchInput = document.getElementById('customerSearchInput');
     const customerSearchSpinner = document.getElementById('customerSearchSpinner');
+    const customerResultsDropdown = document.getElementById('customerResultsDropdown');
+    const selectedCustomerCard = document.getElementById('selectedCustomerCard');
+    const selectedCustomerName = document.getElementById('selectedCustomerName');
+    const selectedCustomerPhone = document.getElementById('selectedCustomerPhone');
+    const selectedCustomerAddress = document.getElementById('selectedCustomerAddress');
+    const selectedCustomerAddressWrapper = document.getElementById('selectedCustomerAddressWrapper');
+    const clearSelectedCustomerBtn = document.getElementById('clearSelectedCustomerBtn');
+    const openQuickCustomerModalBtn = document.getElementById('openQuickCustomerModalBtn');
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function setSelectedCustomer(cust) {
+        if (!cust || !cust.id) {
+            customerIdInput.value = '';
+            selectedCustomerCard.classList.add('hidden');
+            selectedCustomerName.textContent = '';
+            selectedCustomerPhone.textContent = '';
+            selectedCustomerAddress.textContent = '';
+            selectedCustomerAddressWrapper?.classList.add('hidden');
+            return;
+        }
+
+        customerIdInput.value = cust.id;
+        customerSearchInput?.classList.remove('ring-2', 'ring-red-500');
+        selectedCustomerName.textContent = cust.name;
+        selectedCustomerPhone.textContent = cust.phone_number || '';
+        if (cust.address && cust.address.trim() !== '') {
+            selectedCustomerAddress.textContent = cust.address.trim();
+            selectedCustomerAddressWrapper?.classList.remove('hidden');
+        } else {
+            selectedCustomerAddress.textContent = '';
+            selectedCustomerAddressWrapper?.classList.add('hidden');
+        }
+        selectedCustomerCard.classList.remove('hidden');
+        customerResultsDropdown.classList.add('hidden');
+        customerSearchInput.value = '';
+    }
+
+    clearSelectedCustomerBtn?.addEventListener('click', () => {
+        setSelectedCustomer(null);
+        customerSearchInput.focus();
+    });
+
+    @php
+        $selectedCustomerModel = old('customer_id') ? ($customers->firstWhere('id', old('customer_id')) ?? \App\Models\Customer::find(old('customer_id'))) : $order->customer;
+    @endphp
+    @if($selectedCustomerModel)
+        setSelectedCustomer({
+            id: {{ $selectedCustomerModel->id }},
+            name: @json($selectedCustomerModel->name),
+            phone_number: @json($selectedCustomerModel->phone_number),
+            address: @json($selectedCustomerModel->address)
+        });
+    @endif
+
+    // Quick Customer Modal controls
+    const quickCustomerModal = document.getElementById('quickCustomerModal');
+    const closeQuickCustomerModalBtn = document.getElementById('closeQuickCustomerModalBtn');
+    const cancelQuickCustomerBtn = document.getElementById('cancelQuickCustomerBtn');
+    const quickCustomerForm = document.getElementById('quickCustomerForm');
+    const quickCustomerErrors = document.getElementById('quickCustomerErrors');
+    const quickCustomerErrorsList = document.getElementById('quickCustomerErrorsList');
+    const quickCustomerSpinner = document.getElementById('quickCustomerSpinner');
+    const saveQuickCustomerBtn = document.getElementById('saveQuickCustomerBtn');
+    const quickCustomerPhone = document.getElementById('quick_customer_phone');
+    const quickCustomerName = document.getElementById('quick_customer_name');
+    const quickCustomerAddress = document.getElementById('quick_customer_address');
+
+    function openQuickModal(prefillPhone = '') {
+        if (!quickCustomerModal) return;
+        quickCustomerErrors?.classList.add('hidden');
+        if (quickCustomerErrorsList) quickCustomerErrorsList.innerHTML = '';
+        if (prefillPhone) {
+            quickCustomerPhone.value = prefillPhone;
+            quickCustomerName.focus();
+        } else {
+            quickCustomerPhone.value = customerSearchInput ? customerSearchInput.value.trim() : '';
+            if (quickCustomerPhone.value) {
+                quickCustomerName.focus();
+            } else {
+                quickCustomerPhone.focus();
+            }
+        }
+        quickCustomerModal.classList.remove('hidden');
+    }
+
+    function closeQuickModal() {
+        if (!quickCustomerModal) return;
+        quickCustomerModal.classList.add('hidden');
+        quickCustomerForm?.reset();
+        quickCustomerErrors?.classList.add('hidden');
+        if (quickCustomerErrorsList) quickCustomerErrorsList.innerHTML = '';
+    }
+
+    openQuickCustomerModalBtn?.addEventListener('click', () => openQuickModal());
+    closeQuickCustomerModalBtn?.addEventListener('click', closeQuickModal);
+    cancelQuickCustomerBtn?.addEventListener('click', closeQuickModal);
+
+    quickCustomerModal?.addEventListener('click', (e) => {
+        if (e.target === quickCustomerModal) closeQuickModal();
+    });
+
+    quickCustomerForm?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        quickCustomerErrors?.classList.add('hidden');
+        if (quickCustomerErrorsList) quickCustomerErrorsList.innerHTML = '';
+        quickCustomerSpinner?.classList.remove('hidden');
+        if (saveQuickCustomerBtn) saveQuickCustomerBtn.disabled = true;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const payload = {
+            name: quickCustomerName.value.trim(),
+            phone_number: quickCustomerPhone.value.trim(),
+            address: quickCustomerAddress.value.trim()
+        };
+
+        fetch(`{{ route('orders.quick-customer') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+                throw data;
+            }
+            return data;
+        })
+        .then(data => {
+            const newCust = data.customer;
+            setSelectedCustomer(newCust);
+            closeQuickModal();
+        })
+        .catch(err => {
+            quickCustomerErrors?.classList.remove('hidden');
+            if (err.errors) {
+                Object.values(err.errors).forEach(errArr => {
+                    errArr.forEach(msg => {
+                        const li = document.createElement('li');
+                        li.textContent = msg;
+                        quickCustomerErrorsList?.appendChild(li);
+                    });
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = err.message || 'Failed to create customer.';
+                quickCustomerErrorsList?.appendChild(li);
+            }
+        })
+        .finally(() => {
+            quickCustomerSpinner?.classList.add('hidden');
+            if (saveQuickCustomerBtn) saveQuickCustomerBtn.disabled = false;
+        });
+    });
+
+    // Debounced Customer Live Search (fetches only when >= 4 digits)
     let customerSearchTimer = null;
     let customerAbortController = null;
 
@@ -400,6 +617,13 @@ document.addEventListener('DOMContentLoaded', function () {
         customerSearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             clearTimeout(customerSearchTimer);
+
+            if (query.length < 4) {
+                customerResultsDropdown.classList.add('hidden');
+                customerResultsDropdown.innerHTML = '';
+                customerSearchSpinner?.classList.add('hidden');
+                return;
+            }
 
             customerSearchTimer = setTimeout(() => {
                 if (customerAbortController) {
@@ -414,25 +638,55 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .then(res => res.json())
                 .then(data => {
-                    const currentSelected = customerSelect.value;
                     const customers = data.customers || [];
+                    customerResultsDropdown.innerHTML = '';
 
-                    let optionsHtml = '<option value="">Walk-in Diner (No Account)</option>';
-                    let hasSelected = false;
+                    if (customers.length > 0) {
+                        customers.forEach(c => {
+                            const item = document.createElement('div');
+                            item.className = 'p-3 hover:bg-amber-50/70 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 group';
+                            const hasAddress = Boolean(c.address && c.address.trim());
+                            const addressHtml = hasAddress ? `
+                                <div class="mt-1.5 flex items-start gap-1.5 text-[11px] text-gray-600 bg-gray-50/90 group-hover:bg-amber-100/40 p-2 rounded-lg border border-gray-200/60 transition-colors">
+                                    <svg class="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span class="break-words leading-relaxed flex-1 text-gray-700" dir="auto" title="${escapeHtml(c.address)}">${escapeHtml(c.address)}</span>
+                                </div>
+                            ` : '';
 
-                    customers.forEach(c => {
-                        const isSelected = String(c.id) === String(currentSelected);
-                        if (isSelected) hasSelected = true;
-                        const phone = c.phone_number ? ` (${c.phone_number})` : '';
-                        optionsHtml += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${c.name}${phone}</option>`;
-                    });
-
-                    if (currentSelected && !hasSelected) {
-                        const selectedText = customerSelect.options[customerSelect.selectedIndex]?.text || 'Selected Customer';
-                        optionsHtml += `<option value="${currentSelected}" selected>${selectedText}</option>`;
+                            item.innerHTML = `
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-bold text-gray-900 truncate" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</span>
+                                    <span class="text-[11px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70 tabular-nums shrink-0">
+                                        ${escapeHtml(c.phone_number || '')}
+                                    </span>
+                                </div>
+                                ${addressHtml}
+                            `;
+                            item.addEventListener('click', () => {
+                                setSelectedCustomer(c);
+                            });
+                            customerResultsDropdown.appendChild(item);
+                        });
+                    } else {
+                        const noMatch = document.createElement('div');
+                        noMatch.className = 'p-3 text-center';
+                        noMatch.innerHTML = `
+                            <p class="text-xs text-gray-500">No customer found for "<span class="font-bold text-gray-800">${escapeHtml(query)}</span>"</p>
+                            <button type="button" class="quick-add-btn mt-2 inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-gray-950 hover:bg-amber-400 shadow-sm transition-all">
+                                + Quick Add Caller (${escapeHtml(query)})
+                            </button>
+                        `;
+                        noMatch.querySelector('.quick-add-btn').addEventListener('click', () => {
+                            openQuickModal(query);
+                            customerResultsDropdown.classList.add('hidden');
+                        });
+                        customerResultsDropdown.appendChild(noMatch);
                     }
 
-                    customerSelect.innerHTML = optionsHtml;
+                    customerResultsDropdown.classList.remove('hidden');
                 })
                 .catch(err => {
                     if (err.name !== 'AbortError') {
@@ -442,9 +696,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 .finally(() => {
                     customerSearchSpinner?.classList.add('hidden');
                 });
-            }, 300);
+            }, 250);
         });
     }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('customerSearchContainer');
+        if (container && !container.contains(e.target)) {
+            customerResultsDropdown.classList.add('hidden');
+        }
+    });
 
     // ----------------------------------------------------
     // 3. MENU SEARCH & CATEGORY FILTERING
@@ -665,6 +927,23 @@ document.addEventListener('DOMContentLoaded', function () {
         submitOrderBtn.disabled = false;
     }
 
+    const orderForm = document.getElementById('orderForm');
+    function validateCustomerForDelivery() {
+        if (orderTypeInput.value === 'delivery' && !customerIdInput.value) {
+            alert('A customer is required for delivery orders. Please select or quick-add a caller.');
+            customerSearchInput.classList.add('ring-2', 'ring-red-500');
+            customerSearchInput.focus();
+            return false;
+        }
+        return true;
+    }
+
+    orderForm?.addEventListener('submit', function (e) {
+        if (!validateCustomerForDelivery()) {
+            e.preventDefault();
+        }
+    });
+
     // ----------------------------------------------------
     // 5. KEYBOARD SHORTCUTS FOR SPEED
     // ----------------------------------------------------
@@ -687,7 +966,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             if (!submitOrderBtn.disabled) {
                 e.preventDefault();
-                document.getElementById('orderForm').submit();
+                if (validateCustomerForDelivery()) {
+                    orderForm.submit();
+                }
             }
         }
     });

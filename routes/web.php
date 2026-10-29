@@ -39,6 +39,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::prefix('orders')->name('orders.')->group(function () {
         Route::get('/index', [OrderController::class, 'index'])->name('index');
         Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('search-customers');
+        Route::post('/quick-customer', [OrderController::class, 'quickStoreCustomer'])->name('quick-customer');
         Route::get('/create', [OrderController::class, 'create'])->name('create');
         Route::post('/orders', [OrderController::class, 'store'])->name('store');
 

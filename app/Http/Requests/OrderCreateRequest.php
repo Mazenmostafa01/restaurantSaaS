@@ -43,8 +43,13 @@ class OrderCreateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $isDelivery = $this->input('type') === OrderTypeEnum::DELIVERY->value;
+
         return [
-            'customer_id' => ['required_if:type,delivery', 'nullable', $this->tenantExists('customers', 'id')],
+            'customer_id' => [
+                $isDelivery ? 'required' : 'nullable',
+                $this->tenantExists('customers', 'id'),
+            ],
             'type' => ['required', Rule::enum(OrderTypeEnum::class)],
             'items' => ['required', 'array', 'min:1'],
             'items.*.selected' => ['required', 'in:on'],
@@ -56,7 +61,7 @@ class OrderCreateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'customer_id.required_if' => 'Please select a customer.',
+            'customer_id.required' => 'A customer is required for delivery orders.',
             'type.required' => 'Please select an order type.',
             'type.in' => 'Order type must be one of: delivery, take away',
             'items.required' => 'You must select at least one item.',

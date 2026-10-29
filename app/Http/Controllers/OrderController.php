@@ -7,6 +7,7 @@ use App\Enums\ItemCategoryEnum;
 use App\Enums\OrderTypeEnum;
 use App\Http\Requests\OrderCreateRequest;
 use App\Http\Requests\OrderUpdateRequest;
+use App\Http\Requests\QuickCustomerRequest;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
@@ -37,17 +38,40 @@ class OrderController extends Controller
         $phone = trim((string) $request->input('q', ''));
 
         if ($phone === '') {
-            $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(20)->get();
+            $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(15)->get();
 
             return response()->json(['customers' => $customers]);
         }
 
-        $customers = Customer::select('id', 'name', 'phone_number')
+        $customers = Customer::select('id', 'name', 'phone_number', 'address')
             ->where('phone_number', 'like', "{$phone}%")
-            ->limit(20)
+            ->limit(15)
             ->get();
 
         return response()->json(['customers' => $customers]);
+    }
+
+    public function quickStoreCustomer(QuickCustomerRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $customer = Customer::create([
+            'name' => trim($validated['name']),
+            'phone_number' => trim($validated['phone_number']),
+            'address' => isset($validated['address']) && trim($validated['address']) !== '' ? trim($validated['address']) : null,
+            'email' => null,
+            'password' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Customer created successfully.',
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone_number' => $customer->phone_number,
+                'address' => $customer->address,
+            ],
+        ], 201);
     }
 
     public function create(): View
@@ -55,7 +79,7 @@ class OrderController extends Controller
         $items = Item::orderBy('category')->get();
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
-        $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(50)->get();
+        $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(50)->get();
 
         return view('admin.orders.create', compact('items', 'categories', 'orderType', 'customers'));
     }
@@ -75,15 +99,17 @@ class OrderController extends Controller
 
     public function edit(Order $order): View
     {
+        $order->loadMissing(['customer', 'items']);
+        $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
         $items = Item::orderBy('category')->get();
-        $customers = Customer::select('id', 'name', 'phone_number')->latest('id')->limit(50)->get();
+        $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(50)->get();
 
         if ($order->customer && ! $customers->contains('id', $order->customer_id)) {
             $customers->prepend($order->customer);
         }
 
-        return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items'));
+        return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items', 'categories'));
     }
 
     public function update(OrderUpdateRequest $request, Order $order): RedirectResponse
