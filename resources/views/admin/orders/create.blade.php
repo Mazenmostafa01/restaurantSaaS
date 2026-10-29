@@ -363,9 +363,9 @@ document.addEventListener('DOMContentLoaded', function () {
         @endphp
         itemsData[{{ $item->id }}] = {
             id: {{ $item->id }},
-            name: @json($item->name),
+            name: {{ Js::from($item->name) }},
             price: {{ (float) $item->price }},
-            category: @json(strtolower($catVal))
+            category: {{ Js::from(strtolower($catVal)) }}
         };
     @endforeach
 
@@ -403,6 +403,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const customerRequiredTag = document.getElementById('customerRequiredTag');
     const customerModeHint = document.getElementById('customerModeHint');
 
+    // Customer Selection & Autocomplete State
+    const customerIdInput = document.getElementById('customer_id');
+    const customerSearchInput = document.getElementById('customerSearchInput');
+    const customerSearchSpinner = document.getElementById('customerSearchSpinner');
+    const customerResultsDropdown = document.getElementById('customerResultsDropdown');
+    const selectedCustomerCard = document.getElementById('selectedCustomerCard');
+    const selectedCustomerName = document.getElementById('selectedCustomerName');
+    const selectedCustomerPhone = document.getElementById('selectedCustomerPhone');
+    const selectedCustomerAddress = document.getElementById('selectedCustomerAddress');
+    const selectedCustomerAddressWrapper = document.getElementById('selectedCustomerAddressWrapper');
+    const clearSelectedCustomerBtn = document.getElementById('clearSelectedCustomerBtn');
+    const openQuickCustomerModalBtn = document.getElementById('openQuickCustomerModalBtn');
+
     // ----------------------------------------------------
     // 2. ORDER TYPE & CUSTOMER LOGIC
     // ----------------------------------------------------
@@ -431,19 +444,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize order type UI
     setOrderType(orderTypeInput.value || 'take_away');
-
-    // Customer Selection & Autocomplete State
-    const customerIdInput = document.getElementById('customer_id');
-    const customerSearchInput = document.getElementById('customerSearchInput');
-    const customerSearchSpinner = document.getElementById('customerSearchSpinner');
-    const customerResultsDropdown = document.getElementById('customerResultsDropdown');
-    const selectedCustomerCard = document.getElementById('selectedCustomerCard');
-    const selectedCustomerName = document.getElementById('selectedCustomerName');
-    const selectedCustomerPhone = document.getElementById('selectedCustomerPhone');
-    const selectedCustomerAddress = document.getElementById('selectedCustomerAddress');
-    const selectedCustomerAddressWrapper = document.getElementById('selectedCustomerAddressWrapper');
-    const clearSelectedCustomerBtn = document.getElementById('clearSelectedCustomerBtn');
-    const openQuickCustomerModalBtn = document.getElementById('openQuickCustomerModalBtn');
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -491,9 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
         @if($oldCust)
             setSelectedCustomer({
                 id: {{ $oldCust->id }},
-                name: @json($oldCust->name),
-                phone_number: @json($oldCust->phone_number),
-                address: @json($oldCust->address)
+                name: {{ Js::from($oldCust->name) }},
+                phone_number: {{ Js::from($oldCust->phone_number) }},
+                address: {{ Js::from($oldCust->address) }}
             });
         @endif
     @endif
