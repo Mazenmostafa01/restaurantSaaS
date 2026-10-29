@@ -20,7 +20,7 @@ class OrderService
 
         return DB::transaction(function () use ($orderData, $pricing): Order {
             $order = Order::create([
-                'order_number' => $this->generateOrderNumber($orderData->orderNumberPrefix),
+                'order_number' => $this->generateUniqueOrderNumber($orderData->orderNumberPrefix),
                 'price' => $pricing['subTotal'],
                 'tax' => $pricing['tax'],
                 'net' => $pricing['netTotal'],
@@ -38,7 +38,13 @@ class OrderService
 
     public function updateOrder(Order $order, OrderWriteData $orderData): Order
     {
-        $pricing = $this->calculatePricingAndPivot($orderData->itemQuantities);
+        $existingTrashedIds = $order->items()
+            ->onlyTrashed()
+            ->pluck('items.id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
+
+        $pricing = $this->calculatePricingAndPivot($orderData->itemQuantities, $existingTrashedIds);
 
         return DB::transaction(function () use ($order, $orderData, $pricing): Order {
             $order->update([
@@ -67,11 +73,17 @@ class OrderService
 
     /**
      * @param  array<int, int>  $itemQuantities
+     * @param  array<int, int>  $allowedTrashedIds
      * @return array{subTotal: float, tax: float, netTotal: float, pivotDetails: array<int, array{quantity: int}>}
      */
-    private function calculatePricingAndPivot(array $itemQuantities): array
+    private function calculatePricingAndPivot(array $itemQuantities, array $allowedTrashedIds = []): array
     {
-        $items = Item::whereIn('id', array_keys($itemQuantities))->get()->keyBy('id');
+        $requestedIds = array_keys($itemQuantities);
+        $items = Item::withTrashed()
+            ->whereIn('id', $requestedIds)
+            ->get()
+            ->filter(static fn (Item $item): bool => ! $item->trashed() || in_array((int) $item->id, $allowedTrashedIds, true))
+            ->keyBy('id');
 
         if ($items->count() !== count($itemQuantities)) {
             throw new ModelNotFoundException('One or more ordered items are unavailable.');
@@ -85,18 +97,24 @@ class OrderService
             $pivotDetails[$itemId] = ['quantity' => $quantity];
         }
 
-        $tax = $this->tax($subTotal);
+        $subTotal = round($subTotal, 2);
+        $tax = round($this->tax($subTotal), 2);
 
         return [
             'subTotal' => $subTotal,
             'tax' => $tax,
-            'netTotal' => $subTotal + $tax,
+            'netTotal' => round($subTotal + $tax, 2),
             'pivotDetails' => $pivotDetails,
         ];
     }
 
-    private function generateOrderNumber(string $prefix = ''): string
+    public function generateUniqueOrderNumber(string $prefix = ''): string
     {
-        return $prefix.now()->format('ymd').'-'.Str::upper(Str::random(6));
+        // Bypass of TenantScope is intentional: order_number uniqueness is checked globally across all orders.
+        do {
+            $candidate = $prefix.now()->format('ymd').'-'.Str::upper(Str::random(6));
+        } while (Order::withoutGlobalScopes()->where('order_number', $candidate)->exists());
+
+        return $candidate;
     }
 }

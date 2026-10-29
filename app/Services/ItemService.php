@@ -6,7 +6,9 @@ use App\DTOs\ItemWriteData;
 use App\Events\ItemUpdateEvent;
 use App\Models\Item;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
 class ItemService
@@ -15,9 +17,11 @@ class ItemService
 
     public function createItem(ItemWriteData $itemData): Item
     {
-        $storedUploads = $this->writeFilesToDisk($itemData->uploadedImages);
+        $storedUploads = [];
 
         try {
+            $storedUploads = $this->writeFilesToDisk($itemData->uploadedImages);
+
             return DB::transaction(function () use ($itemData, $storedUploads): Item {
                 $item = Item::create([
                     'name' => $itemData->name,
@@ -42,9 +46,11 @@ class ItemService
 
     public function updateItem(Item $item, ItemWriteData $itemData): Item
     {
-        $storedUploads = $this->writeFilesToDisk($itemData->uploadedImages);
+        $storedUploads = [];
 
         try {
+            $storedUploads = $this->writeFilesToDisk($itemData->uploadedImages);
+
             return DB::transaction(function () use ($item, $itemData, $storedUploads): Item {
                 $item->update([
                     'name' => $itemData->name,
@@ -59,7 +65,15 @@ class ItemService
 
                 DB::afterCommit(function () use ($item): void {
                     $this->tenantCache->forgetMenu((int) $item->restaurant_id);
-                    event(new ItemUpdateEvent($item));
+
+                    try {
+                        event(new ItemUpdateEvent($item));
+                    } catch (Throwable $broadcastException) {
+                        Log::warning('Failed to broadcast ItemUpdateEvent', [
+                            'item_id' => $item->id,
+                            'exception' => $broadcastException,
+                        ]);
+                    }
                 });
 
                 return $item;
@@ -89,16 +103,25 @@ class ItemService
     private function writeFilesToDisk(array $images): array
     {
         $stored = [];
-        foreach ($images as $position => $image) {
-            $path = Storage::disk('public')->put('/images', $image);
-            $stored[] = [
-                'path' => $path,
-                'filename' => str_replace('images/', '', $path),
-                'disk' => 'public',
-                'mime_type' => $image->getMimeType(),
-                'filesize' => $image->getSize(),
-                'position' => $position,
-            ];
+        try {
+            foreach ($images as $position => $image) {
+                $path = Storage::disk('public')->put('/images', $image);
+                if (! is_string($path) || $path === '') {
+                    throw new RuntimeException('Failed to store uploaded item image.');
+                }
+
+                $stored[] = [
+                    'path' => $path,
+                    'filename' => str_replace('images/', '', $path),
+                    'disk' => 'public',
+                    'mime_type' => $image->getMimeType(),
+                    'filesize' => $image->getSize(),
+                    'position' => $position,
+                ];
+            }
+        } catch (Throwable $exception) {
+            $this->cleanupOrphanedFiles($stored);
+            throw $exception;
         }
 
         return $stored;

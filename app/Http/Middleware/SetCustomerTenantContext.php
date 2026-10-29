@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Customer;
 use App\Models\Restaurant;
 use App\Services\TenantCacheService;
 use App\Services\TenantContext;
@@ -35,7 +36,7 @@ class SetCustomerTenantContext
         $middlewares = $request->route()->middleware();
         if (in_array('auth:sanctum', $middlewares)) {
             $customer = $request->user();
-            if ($customer && (int) $customer->restaurant_id !== (int) $restaurant->id) {
+            if (! $customer instanceof Customer || (int) $customer->restaurant_id !== (int) $restaurant->id) {
                 return response()->json([
                     'message' => 'Unauthenticated.',
                 ], 401);

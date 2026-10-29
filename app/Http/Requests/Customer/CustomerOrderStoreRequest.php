@@ -24,8 +24,8 @@ class CustomerOrderStoreRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::enum(OrderTypeEnum::class)],
-            'note' => ['nullable', 'string', 'max:500'],
-            'items' => ['required', 'array', 'min:1'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'items' => ['required', 'array', 'min:1', 'max:50'],
             'items.*.id' => [
                 'required',
                 'integer',

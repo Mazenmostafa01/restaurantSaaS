@@ -79,7 +79,8 @@ class DashboardAnalyticsService
     {
         $tenantId = $this->tenant->id();
 
-        return Item::select('items.name', DB::raw('SUM(order_items.quantity * items.price) as total_sales'))
+        return Item::withTrashed()
+            ->select('items.name', DB::raw('SUM(order_items.quantity * items.price) as total_sales'))
             ->join('order_items', 'items.id', '=', 'order_items.item_id')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->when($tenantId !== null, fn ($query) => $query->where('orders.restaurant_id', $tenantId))

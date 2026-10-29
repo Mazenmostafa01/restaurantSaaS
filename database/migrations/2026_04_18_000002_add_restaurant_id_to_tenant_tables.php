@@ -13,10 +13,10 @@ return new class extends Migration
         // nullable: a user with restaurant_id = null is a platform superadmin
         Schema::table('users', function (Blueprint $table) {
             $table->foreignIdFor(Restaurant::class)
-                  ->nullable()
-                  ->after('id')
-                  ->constrained()
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('id')
+                ->constrained()
+                ->nullOnDelete();
 
             // Superadmin look-ups by restaurant
             $table->index('restaurant_id', 'idx_users_restaurant');
@@ -27,10 +27,10 @@ return new class extends Migration
         // at any table size — critical for the menu page at 2 000+ orders/day
         Schema::table('items', function (Blueprint $table) {
             $table->foreignIdFor(Restaurant::class)
-                  ->nullable()
-                  ->after('id')
-                  ->constrained()
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('id')
+                ->constrained()
+                ->nullOnDelete();
 
             $table->index(['restaurant_id', 'deleted_at'], 'idx_items_restaurant_deleted');
         });
@@ -41,10 +41,10 @@ return new class extends Migration
         // even with tens of millions of rows per restaurant per year
         Schema::table('orders', function (Blueprint $table) {
             $table->foreignIdFor(Restaurant::class)
-                  ->nullable()
-                  ->after('id')
-                  ->constrained()
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('id')
+                ->constrained()
+                ->nullOnDelete();
 
             $table->index(['restaurant_id', 'created_at'], 'idx_orders_restaurant_date');
         });
@@ -52,10 +52,10 @@ return new class extends Migration
         // ── customers ─────────────────────────────────────────────────────────
         Schema::table('customers', function (Blueprint $table) {
             $table->foreignIdFor(Restaurant::class)
-                  ->nullable()
-                  ->after('id')
-                  ->constrained()
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('id')
+                ->constrained()
+                ->nullOnDelete();
 
             $table->index(['restaurant_id', 'id'], 'idx_customers_restaurant_id');
         });

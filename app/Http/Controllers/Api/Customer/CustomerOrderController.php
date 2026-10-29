@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Restaurant;
 use App\Services\OrderService;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,10 +30,6 @@ class CustomerOrderController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        if ($orders->isEmpty()) {
-            return response()->json(['message' => 'no orders founded']);
-        }
-
         return response()->json([
             'orders' => $orders->through(
                 static fn (Order $order): array => (new OrderSummaryResource($order))->resolve($request)
@@ -45,7 +42,7 @@ class CustomerOrderController extends Controller
      */
     public function show(Request $request, Restaurant $restaurant, Order $order): JsonResponse
     {
-        if ($order->customer_id !== $request->user()->id) {
+        if ((int) $order->customer_id !== (int) $request->user()->id) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
 
@@ -72,6 +69,10 @@ class CustomerOrderController extends Controller
                     'net' => number_format((float) $order->net, 2),
                 ],
             ], 201);
+        } catch (ModelNotFoundException) {
+            return response()->json([
+                'message' => 'One or more selected items are no longer available.',
+            ], 422);
         } catch (Exception $exception) {
             Log::error('Customer order creation failed', ['exception' => $exception]);
 

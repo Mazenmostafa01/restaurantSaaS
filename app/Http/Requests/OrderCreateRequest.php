@@ -54,7 +54,7 @@ class OrderCreateRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.selected' => ['required', 'in:on'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
-            'note' => ['nullable', 'string'],
+            'note' => ['nullable', 'string', 'max:255'],
         ];
     }
 

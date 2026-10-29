@@ -187,11 +187,16 @@
                                 color: #ffffff !important;
                             }
                         </style>
+                        @php
+                            $oldType = is_string(old('type')) ? old('type') : 'take_away';
+                            $oldCustomerId = is_scalar(old('customer_id')) ? (string) old('customer_id') : '';
+                            $oldNote = is_string(old('note')) ? old('note') : '';
+                        @endphp
                         <div class="grid grid-cols-2 gap-1.5 p-1 bg-gray-800 rounded-xl border border-gray-700">
                             @foreach ($orderType as $type)
                                 @php
                                     $typeVal = is_object($type) ? $type->value : $type;
-                                    $isDefault = old('type', 'take_away') === $typeVal;
+                                    $isDefault = $oldType === $typeVal;
                                 @endphp
                                 <button type="button" data-order-type="{{ $typeVal }}"
                                     class="order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold {{ $isDefault ? 'is-active' : '' }}">
@@ -203,7 +208,7 @@
                                 </button>
                             @endforeach
                         </div>
-                        <input type="hidden" name="type" id="order_type_input" value="{{ old('type', 'take_away') }}">
+                        <input type="hidden" name="type" id="order_type_input" value="{{ $oldType }}">
                     </div>
 
                     <!-- Customer Picker Container -->
@@ -226,7 +231,7 @@
                         </div>
 
                         <!-- Hidden Customer ID input -->
-                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ $oldCustomerId }}">
 
                         <!-- Search Box with Live Floating Results -->
                         <div class="relative" id="customerSearchContainer">
@@ -302,7 +307,7 @@
                             <label for="order_note" class="text-xs font-semibold text-gray-600">Kitchen Instructions</label>
                             <span class="text-[10px] text-gray-400">Optional</span>
                         </div>
-                        <input type="text" name="note" id="order_note" value="{{ old('note') }}" 
+                        <input type="text" name="note" id="order_note" value="{{ $oldNote }}" 
                             placeholder="e.g. Extra sauce, no onions, rush order..."
                             class="block w-full rounded-lg border-0 py-1.5 px-2.5 text-xs text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-amber-500 bg-white" />
                     </div>
@@ -368,11 +373,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let ticket = {};
 
     // Restore old() items if validation failed
-    @if(old('items'))
+    @if(is_array(old('items')))
         @foreach(old('items') as $oldId => $oldVal)
-            @if(isset($oldVal['selected']) && $oldVal['selected'] === 'on' && isset($oldVal['quantity']))
-                if (itemsData[{{ $oldId }}]) {
-                    ticket[{{ $oldId }}] = parseInt({{ $oldVal['quantity'] }}) || 1;
+            @if(is_array($oldVal) && ($oldVal['selected'] ?? null) === 'on' && isset($oldVal['quantity']) && is_scalar($oldVal['quantity']))
+                if (itemsData[{{ (int) $oldId }}]) {
+                    ticket[{{ (int) $oldId }}] = {{ max(1, (int) $oldVal['quantity']) }};
                 }
             @endif
         @endforeach
@@ -479,9 +484,9 @@ document.addEventListener('DOMContentLoaded', function () {
         customerSearchInput.focus();
     });
 
-    @if(old('customer_id'))
+    @if($oldCustomerId !== '')
         @php
-            $oldCust = $customers->firstWhere('id', old('customer_id'));
+            $oldCust = $customers->firstWhere('id', (int) $oldCustomerId);
         @endphp
         @if($oldCust)
             setSelectedCustomer({

@@ -103,6 +103,13 @@ class OrderController extends Controller
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
         $items = Item::orderBy('category')->get();
+
+        foreach ($order->items as $orderItem) {
+            if (! $items->contains('id', $orderItem->id)) {
+                $items->push($orderItem);
+            }
+        }
+
         $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(50)->get();
 
         if ($order->customer && ! $customers->contains('id', $order->customer_id)) {

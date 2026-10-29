@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -61,13 +63,31 @@ class CustomerAuthService
      */
     public function findExistingCustomerInTenant(array $validated): ?Customer
     {
+        return $this->queryCustomerByEmailOrPhone($validated)->first();
+    }
+
+    /**
+     * Bypass of TenantScope is intentional per docs/architecture.md §2.5:
+     * locks matching customer row within the explicit tenant ID during registration.
+     *
+     * @param  array{name: string, email: string, phone_number: string, password: string, address?: ?string}  $validated
+     */
+    public function findAndLockExistingCustomerInTenant(array $validated): ?Customer
+    {
+        return $this->queryCustomerByEmailOrPhone($validated)->lockForUpdate()->first();
+    }
+
+    /**
+     * @param  array{name: string, email: string, phone_number: string, password: string, address?: ?string}  $validated
+     */
+    private function queryCustomerByEmailOrPhone(array $validated): Builder
+    {
         return Customer::withoutGlobalScopes()
             ->where('restaurant_id', $this->tenant->id())
             ->where(function ($query) use ($validated): void {
                 $query->where('email', $validated['email'])
                     ->orWhere('phone_number', $validated['phone_number']);
-            })
-            ->first();
+            });
     }
 
     /**
@@ -108,14 +128,17 @@ class CustomerAuthService
      */
     public function claimShadowCustomer(Customer $shadowCustomer, array $validated, string $throttleKey): array
     {
-        $shadowCustomer->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-            'address' => $validated['address'] ?? $shadowCustomer->address,
-        ]);
+        $token = DB::transaction(function () use ($shadowCustomer, $validated): string {
+            $shadowCustomer->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+                'address' => $validated['address'] ?? $shadowCustomer->address,
+            ]);
 
-        $token = $this->rotateToken($shadowCustomer);
+            return $this->rotateToken($shadowCustomer);
+        });
+
         RateLimiter::clear($throttleKey);
 
         return ['customer' => $shadowCustomer, 'token' => $token];
@@ -127,15 +150,18 @@ class CustomerAuthService
      */
     public function registerCustomer(array $validated, string $throttleKey): array
     {
-        $customer = Customer::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'],
-            'password' => $validated['password'],
-            'address' => $validated['address'] ?? null,
-        ]);
+        [$customer, $token] = DB::transaction(function () use ($validated): array {
+            $customer = Customer::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone_number' => $validated['phone_number'],
+                'password' => $validated['password'],
+                'address' => $validated['address'] ?? null,
+            ]);
 
-        $token = $this->rotateToken($customer);
+            return [$customer, $this->rotateToken($customer)];
+        });
+
         RateLimiter::clear($throttleKey);
 
         return ['customer' => $customer, 'token' => $token];

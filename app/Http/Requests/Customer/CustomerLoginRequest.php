@@ -16,9 +16,11 @@ class CustomerLoginRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $authService = app(CustomerAuthService::class);
+        $rawEmail = $this->input('email');
+        $email = is_string($rawEmail) ? $rawEmail : '';
         $throttleKey = $authService->buildThrottleKey(
             'login',
-            (string) $this->input('email'),
+            $email,
             (string) $this->ip()
         );
 
@@ -31,8 +33,8 @@ class CustomerLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
-            'password' => ['required'],
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
         ];
     }
 }

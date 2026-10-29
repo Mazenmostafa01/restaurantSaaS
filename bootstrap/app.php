@@ -38,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Sanctum cookie-based SPA auth for API routes
         $middleware->statefulApi();
+
+        $middleware->redirectGuestsTo(fn ($request) => $request->is('api/*') ? null : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

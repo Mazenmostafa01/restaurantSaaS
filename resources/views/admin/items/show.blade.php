@@ -4,14 +4,16 @@
     <div class="rounded bg-white p-6 shadow">
         <div class="flex items-start justify-between">
             <h1 class="text-2xl font-bold">{{ $item->name }}</h1>
-            <div class="space-x-2">
-                <a href="{{ route('items.edit', $item->id) }}">Edit</a>
-                <form action="{{ route('items.delete', $item->id) }}" method="POST" class="inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="text-red-600" onclick="return confirm('Delete this item?')">Delete</button>
-                </form>
-            </div>
+            @if (auth()->user()?->hasRole('Admin'))
+                <div class="space-x-2">
+                    <a href="{{ route('items.edit', $item->id) }}">Edit</a>
+                    <form action="{{ route('items.delete', $item->id) }}" method="POST" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-red-600" onclick="return confirm('Delete this item?')">Delete</button>
+                    </form>
+                </div>
+            @endif
         </div>
 
         <div class="mt-4 grid grid-cols-3 gap-4">

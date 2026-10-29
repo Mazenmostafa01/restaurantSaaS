@@ -192,12 +192,19 @@
                                 color: #ffffff !important;
                             }
                         </style>
+                        @php
+                            $defaultTypeVal = is_object($order->type) ? $order->type->value : (string) $order->type;
+                            $currentType = is_string(old('type')) ? old('type') : $defaultTypeVal;
+                            $oldCustomerId = old('customer_id', $order->customer_id);
+                            $safeCustomerId = is_scalar($oldCustomerId) ? (string) $oldCustomerId : '';
+                            $oldNote = old('note', $order->note);
+                            $safeNote = is_string($oldNote) ? $oldNote : '';
+                        @endphp
                         <div class="grid grid-cols-2 gap-1.5 p-1 bg-gray-800 rounded-xl border border-gray-700">
                             @foreach ($orderType as $type)
                                 @php
                                     $typeVal = is_object($type) ? $type->value : $type;
-                                    $currentType = old('type', $order->type);
-                                    $isDefault = ($currentType == $typeVal || (is_object($currentType) && $currentType->value == $typeVal));
+                                    $isDefault = ($currentType === $typeVal);
                                 @endphp
                                 <button type="button" data-order-type="{{ $typeVal }}"
                                     class="order-type-btn flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold {{ $isDefault ? 'is-active' : '' }}">
@@ -209,7 +216,7 @@
                                 </button>
                             @endforeach
                         </div>
-                        <input type="hidden" name="type" id="order_type_input" value="{{ old('type', is_object($order->type) ? $order->type->value : $order->type) }}">
+                        <input type="hidden" name="type" id="order_type_input" value="{{ $currentType }}">
                     </div>
 
                     <!-- Customer Picker Container -->
@@ -232,7 +239,7 @@
                         </div>
 
                         <!-- Hidden Customer ID input -->
-                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $order->customer_id) }}">
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ $safeCustomerId }}">
 
                         <!-- Search Box with Live Floating Results -->
                         <div class="relative" id="customerSearchContainer">
@@ -308,7 +315,7 @@
                             <label for="order_note" class="text-xs font-semibold text-gray-600">Kitchen Instructions</label>
                             <span class="text-[10px] text-gray-400">Optional</span>
                         </div>
-                        <input type="text" name="note" id="order_note" value="{{ old('note', $order->note) }}" 
+                        <input type="text" name="note" id="order_note" value="{{ $safeNote }}" 
                             placeholder="e.g. Extra sauce, no onions, rush order..."
                             class="block w-full rounded-lg border-0 py-1.5 px-2.5 text-xs text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-amber-500 bg-white" />
                     </div>
@@ -379,11 +386,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Active Ticket State: { [itemId]: quantity }
     let ticket = {};
 
-    @if(old('items'))
+    @if(is_array(old('items')))
         @foreach(old('items') as $oldId => $oldVal)
-            @if(isset($oldVal['selected']) && $oldVal['selected'] === 'on' && isset($oldVal['quantity']))
-                if (itemsData[{{ $oldId }}]) {
-                    ticket[{{ $oldId }}] = parseInt({{ $oldVal['quantity'] }}) || 1;
+            @if(is_array($oldVal) && ($oldVal['selected'] ?? null) === 'on' && isset($oldVal['quantity']) && is_scalar($oldVal['quantity']))
+                if (itemsData[{{ (int) $oldId }}]) {
+                    ticket[{{ (int) $oldId }}] = {{ max(1, (int) $oldVal['quantity']) }};
                 }
             @endif
         @endforeach
@@ -493,7 +500,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     @php
-        $selectedCustomerModel = old('customer_id') ? ($customers->firstWhere('id', old('customer_id')) ?? \App\Models\Customer::find(old('customer_id'))) : $order->customer;
+        $rawOldCustId = old('customer_id');
+        $selectedCustomerModel = is_scalar($rawOldCustId) && $rawOldCustId !== ''
+            ? ($customers->firstWhere('id', (int) $rawOldCustId) ?? \App\Models\Customer::find((int) $rawOldCustId))
+            : $order->customer;
     @endphp
     @if($selectedCustomerModel)
         setSelectedCustomer({

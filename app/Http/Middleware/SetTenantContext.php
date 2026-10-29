@@ -20,13 +20,15 @@ class SetTenantContext
     {
         $user = $request->user();
 
-        if ($user && $user->restaurant_id !== null) {
-            $restaurant = $this->tenantCache->findRestaurantById((int) $user->restaurant_id);
+        if ($user) {
+            if ($user->restaurant_id !== null) {
+                $restaurant = $this->tenantCache->findRestaurantById((int) $user->restaurant_id);
 
-            if ($restaurant && $restaurant->is_active) {
-                $this->tenantContext->set($restaurant);
+                if ($restaurant && $restaurant->is_active) {
+                    $this->tenantContext->set($restaurant);
 
-                return $next($request);
+                    return $next($request);
+                }
             }
 
             Auth::logout();

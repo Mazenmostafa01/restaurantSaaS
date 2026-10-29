@@ -38,7 +38,13 @@ class ItemUpdateEvent implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'item' => $this->item->toArray(),
+            'item' => [
+                'id' => $this->item->id,
+                'name' => $this->item->name,
+                'price' => $this->item->price,
+                'category' => $this->item->category,
+                'description' => $this->item->description,
+            ],
         ];
     }
 

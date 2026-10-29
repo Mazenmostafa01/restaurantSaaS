@@ -17,9 +17,11 @@ class CustomerRegisterRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $authService = app(CustomerAuthService::class);
+        $rawEmail = $this->input('email');
+        $email = is_string($rawEmail) ? $rawEmail : '';
         $throttleKey = $authService->buildThrottleKey(
             'register',
-            (string) $this->input('email'),
+            $email,
             (string) $this->ip()
         );
 
@@ -33,10 +35,10 @@ class CustomerRegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'phone_number' => ['required', 'string', 'max:20'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-            'address' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'address' => ['required', 'string', 'max:100'],
         ];
     }
 }

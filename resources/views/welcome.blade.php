@@ -70,15 +70,17 @@
             <!-- Navigation Links -->
             <div class="p-4 flex-grow overflow-y-auto">
                 <ul class="space-y-2 font-medium">
-                    <li>
-                        <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 text-gray-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all group">
-                            <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-700 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14h6M9 10h6" />
-                            </svg>
-                            <span class="ms-3 font-semibold">Dashboard</span>
-                        </a>
-                    </li>
+                    @if (auth()->user()?->hasRole('Admin'))
+                        <li>
+                            <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 text-gray-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all group">
+                                <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-700 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14h6M9 10h6" />
+                                </svg>
+                                <span class="ms-3 font-semibold">Dashboard</span>
+                            </a>
+                        </li>
+                    @endif
                     <li>
                         <a href="{{ route('items.index') }}" class="flex items-center px-4 py-3 text-gray-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all group">
                             <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-700 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">

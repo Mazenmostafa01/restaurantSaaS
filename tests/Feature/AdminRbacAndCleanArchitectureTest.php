@@ -466,4 +466,169 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
         $this->assertNotNull($freshOrder);
         $this->assertNull($freshOrder->deleted_at);
     }
+
+    public function test_same_item_name_is_allowed_across_different_restaurants(): void
+    {
+        $otherRestaurant = Restaurant::create([
+            'name' => 'Taco Town',
+            'slug' => 'taco-town',
+            'email' => 'hello@tacotown.com',
+            'is_active' => true,
+        ]);
+
+        Item::create([
+            'name' => 'Caesar Salad',
+            'price' => 95.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $secondItem = Item::withoutGlobalScopes()->create([
+            'name' => 'Caesar Salad',
+            'price' => 100.00,
+            'category' => 'food',
+            'restaurant_id' => $otherRestaurant->id,
+        ]);
+
+        $this->assertNotNull($secondItem->id);
+        $this->assertSame($otherRestaurant->id, $secondItem->restaurant_id);
+    }
+
+    public function test_admin_web_session_cannot_authenticate_as_customer_on_customer_api(): void
+    {
+        config(['sanctum.stateful' => ['localhost', '127.0.0.1']]);
+
+        $customerWithSameId = Customer::create([
+            'name' => 'Real Customer',
+            'email' => 'real@customer.com',
+            'phone_number' => '01099887766',
+            'password' => 'password123',
+            'address' => '10 Real St',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        Order::create([
+            'order_number' => 'CUST-ORD-1',
+            'price' => 50.00,
+            'tax' => 7.00,
+            'net' => 57.00,
+            'type' => 'take_away',
+            'customer_id' => $customerWithSameId->id,
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        app()->forgetInstance(TenantContext::class);
+
+        $this->actingAs($this->adminUser, 'web')
+            ->getJson("/api/customer/{$this->restaurant->slug}/orders", ['Referer' => 'http://localhost'])
+            ->assertStatus(401);
+
+        $this->actingAs($this->adminUser, 'web')
+            ->postJson("/api/customer/{$this->restaurant->slug}/logout", [], ['Referer' => 'http://localhost'])
+            ->assertStatus(401);
+    }
+
+    public function test_user_without_restaurant_id_is_forbidden_from_tenant_routes(): void
+    {
+        app()->forgetInstance(TenantContext::class);
+
+        $orphanUser = User::withoutGlobalScopes()->create([
+            'name' => 'Orphan User',
+            'email' => 'orphan@example.com',
+            'password' => bcrypt('password123'),
+            'restaurant_id' => null,
+        ]);
+        $orphanUser->assignRole('Admin');
+
+        $this->actingAs($orphanUser, 'web')
+            ->get(route('items.index'))
+            ->assertStatus(403);
+    }
+
+    public function test_soft_deleted_items_remain_visible_on_existing_orders_and_edit_preserves_them(): void
+    {
+        $item1 = Item::create([
+            'name' => 'Seasonal Soup',
+            'price' => 40.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $item2 = Item::create([
+            'name' => 'Garlic Bread',
+            'price' => 20.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Soup Lover',
+            'email' => 'soup@example.com',
+            'password' => 'password123',
+            'phone_number' => '01011223344',
+            'address' => '12 Soup St',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'ORD-SOUP',
+            'price' => 60.00,
+            'tax' => 8.40,
+            'net' => 68.40,
+            'type' => 'take_away',
+            'customer_id' => $customer->id,
+            'user_id' => $this->adminUser->id,
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+        $order->items()->attach([
+            $item1->id => ['quantity' => 1],
+            $item2->id => ['quantity' => 1],
+        ]);
+
+        // Soft-delete item1 after order was placed
+        $item1->delete();
+
+        $token = $customer->createToken($this->restaurant->slug)->plainTextToken;
+        $headers = ['Authorization' => 'Bearer '.$token];
+
+        // Customer order history & detail still show the soft-deleted item
+        $this->getJson("/api/customer/{$this->restaurant->slug}/orders", $headers)
+            ->assertOk()
+            ->assertJsonPath('orders.data.0.items_count', 2);
+
+        $this->getJson("/api/customer/{$this->restaurant->slug}/orders/{$order->id}", $headers)
+            ->assertOk()
+            ->assertJsonCount(2, 'order.items');
+
+        // Admin editing the order can keep the soft-deleted item without losing it
+        $this->actingAs($this->adminUser)->put(route('orders.update', $order), [
+            'type' => 'take_away',
+            'items' => [
+                $item1->id => ['selected' => 'on', 'quantity' => 1],
+                $item2->id => ['selected' => 'on', 'quantity' => 2],
+            ],
+            'note' => 'Added extra bread',
+        ])->assertRedirect(route('orders.index'));
+
+        $this->assertCount(2, $order->fresh()->items);
+        $this->assertEquals('80.00', $order->fresh()->price);
+    }
+
+    public function test_array_inputs_in_customer_auth_requests_return_422_instead_of_500(): void
+    {
+        $this->postJson("/api/customer/{$this->restaurant->slug}/login", [
+            'email' => ['not-a-string'],
+            'password' => ['not-a-string'],
+        ])->assertStatus(422);
+
+        $this->postJson("/api/customer/{$this->restaurant->slug}/register", [
+            'name' => 'Test',
+            'email' => ['array@email.com'],
+            'phone_number' => '01012345678',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'address' => str_repeat('a', 101),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['email', 'address']);
+    }
 }

@@ -12,6 +12,16 @@ class Restaurant extends Model
 {
     use SoftDeletes;
 
+    private const RESERVED_SLUGS = [
+        'login',
+        'logout',
+        'dashboard',
+        'items',
+        'orders',
+        'api',
+        'up',
+    ];
+
     protected $fillable = [
         'name',
         'slug',
@@ -31,9 +41,13 @@ class Restaurant extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (self $restaurant): void {
+        static::saving(function (self $restaurant): void {
             if (empty($restaurant->slug)) {
                 $restaurant->slug = Str::slug($restaurant->name);
+            }
+
+            if (in_array(strtolower((string) $restaurant->slug), self::RESERVED_SLUGS, true)) {
+                $restaurant->slug = $restaurant->slug.'-restaurant';
             }
         });
 

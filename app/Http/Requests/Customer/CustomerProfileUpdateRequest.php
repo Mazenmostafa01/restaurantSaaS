@@ -30,7 +30,7 @@ class CustomerProfileUpdateRequest extends FormRequest
                 'max:20',
                 $this->tenantUnique('customers', 'phone_number')->ignore($customer?->id),
             ],
-            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:100'],
         ];
     }
 
