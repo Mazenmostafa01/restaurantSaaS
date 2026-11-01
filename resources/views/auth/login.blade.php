@@ -140,11 +140,12 @@
                     <!-- Remember Me -->
                     <div class="mb-8">
                         <label class="flex items-center cursor-pointer">
-                            <div class="relative">
-                                <input type="checkbox" 
-                                    id="remember" 
-                                    name="remember"
-                                    class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition duration-200" id="customCheckbox">
+                            <input type="checkbox" 
+                                id="remember" 
+                                name="remember"
+                                class="sr-only">
+                            <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition duration-200" id="customCheckbox">
+                                <i class="fas fa-check text-white text-xs"></i>
                             </div>
                             <span class="ml-3 text-gray-700">Remember me</span>
                         </label>
@@ -200,9 +201,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             const checkbox = document.getElementById('remember');
             const customCheckbox = document.getElementById('customCheckbox');
+            if (!checkbox || !customCheckbox) {
+                return;
+            }
             const checkIcon = customCheckbox.querySelector('i');
             
-            customCheckbox.addEventListener('click', function() {
+            const syncCheckbox = function() {
                 if (checkbox.checked) {
                     customCheckbox.classList.add('bg-blue-600', 'border-blue-600');
                     checkIcon.classList.remove('hidden');
@@ -210,13 +214,13 @@
                     customCheckbox.classList.remove('bg-blue-600', 'border-blue-600');
                     checkIcon.classList.add('hidden');
                 }
-            });
+            };
+            
+            // Update the custom checkbox styling whenever the input changes
+            checkbox.addEventListener('change', syncCheckbox);
             
             // Initialize based on checkbox state
-            if (checkbox.checked) {
-                customCheckbox.classList.add('bg-blue-600', 'border-blue-600');
-                checkIcon.classList.remove('hidden');
-            }
+            syncCheckbox();
         });
         
         // Form submission handling
