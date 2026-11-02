@@ -111,8 +111,38 @@ class TenantRedisCachingTest extends TestCase
 
         // Repopulate and delete item -> invalidates menu cache
         Cache::put("tenant:{$this->restaurant->id}:menu", ['stale data'], 3600);
+        Cache::put("tenant:{$this->restaurant->id}:ai_menu_digest", ['stale digest'], 3600);
         $itemService->deleteItem($item);
         $this->assertFalse(Cache::has("tenant:{$this->restaurant->id}:menu"));
+        $this->assertFalse(Cache::has("tenant:{$this->restaurant->id}:ai_menu_digest"));
+    }
+
+    public function test_ai_menu_digest_is_lean_and_cached(): void
+    {
+        app(TenantContext::class)->set($this->restaurant);
+
+        Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Burger AI',
+            'price' => 150.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+            'description' => 'Delicious handcrafted burger with caramelized onions',
+        ]);
+
+        $cacheService = app(TenantCacheService::class);
+        $digestKey = "tenant:{$this->restaurant->id}:ai_menu_digest";
+        Cache::forget($digestKey);
+
+        $digest = $cacheService->getAiMenuDigest();
+        $this->assertTrue(Cache::has($digestKey));
+        $this->assertCount(1, $digest);
+        $this->assertSame('Burger AI', $digest[0]['name']);
+        $this->assertSame(150.0, $digest[0]['price']);
+        $this->assertArrayNotHasKey('attachments', $digest[0]);
+
+        // Invalidate via forgetMenu
+        $cacheService->forgetMenu();
+        $this->assertFalse(Cache::has($digestKey));
     }
 
     public function test_dashboard_analytics_is_cached_and_served_by_ttl_without_order_thrashing(): void

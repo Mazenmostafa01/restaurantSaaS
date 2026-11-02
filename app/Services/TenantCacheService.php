@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Http\Resources\MenuItemResource;
+use App\Models\Item;
 use App\Models\Restaurant;
 use Closure;
 use Illuminate\Support\Facades\Cache;
@@ -37,11 +39,73 @@ class TenantCacheService
         return Cache::remember($this->menuKey($tenantId), $ttl, $callback);
     }
 
+    public function getCategorizedMenu(): array
+    {
+        return $this->rememberMenu(function (): array {
+            $itemsByCategory = Item::with('attachments')
+                ->orderBy('category')
+                ->orderBy('name')
+                ->get()
+                ->groupBy('category');
+
+            $menu = [];
+            foreach ($itemsByCategory as $category => $categoryItems) {
+                $menu[] = [
+                    'category' => $category,
+                    'items' => MenuItemResource::collection($categoryItems)->resolve(),
+                ];
+            }
+
+            return $menu;
+        });
+    }
+
+    public function getAiMenuDigest(): array
+    {
+        $tenantId = $this->tenant->id();
+        $ttl = $this->menuTtl();
+
+        $fetch = static fn (): array => Item::query()
+            ->select(['id', 'name', 'category', 'price', 'description'])
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(static fn (Item $item): array => [
+                'id' => (int) $item->id,
+                'name' => (string) $item->name,
+                'category' => (string) $item->category,
+                'price' => (float) $item->price,
+                'description' => $item->description ? (string) mb_substr((string) $item->description, 0, 140) : null,
+            ])
+            ->all();
+
+        if ($tenantId === null || $ttl <= 0) {
+            return $fetch();
+        }
+
+        return Cache::remember($this->aiMenuDigestKey($tenantId), $ttl, $fetch);
+    }
+
+    /**
+     * Return active tenant menu items indexed by ID for fast O(1) validation.
+     *
+     * @return array<int, Item>
+     */
+    public function getMenuItemsById(): array
+    {
+        return Item::query()
+            ->select(['id', 'restaurant_id', 'name', 'price', 'category'])
+            ->get()
+            ->keyBy('id')
+            ->all();
+    }
+
     public function forgetMenu(?int $tenantId = null): void
     {
         $id = $tenantId ?? $this->tenant->id();
         if ($id !== null) {
             Cache::forget($this->menuKey($id));
+            Cache::forget($this->aiMenuDigestKey($id));
         }
     }
 
@@ -126,6 +190,11 @@ class TenantCacheService
     private function menuKey(int $tenantId): string
     {
         return "tenant:{$tenantId}:menu";
+    }
+
+    private function aiMenuDigestKey(int $tenantId): string
+    {
+        return "tenant:{$tenantId}:ai_menu_digest";
     }
 
     private function dashboardKey(int $tenantId): string
