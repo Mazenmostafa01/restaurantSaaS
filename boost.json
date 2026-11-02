@@ -1,9 +1,21 @@
 {
     "agents": [
-        "copilot"
+        "antigravity"
     ],
-    "editors": [
-        "vscode"
+    "cloud": true,
+    "guidelines": true,
+    "mcp": true,
+    "nightwatch_mcp": false,
+    "packages": [
+        "barryvdh/laravel-debugbar"
     ],
-    "guidelines": []
+    "sail": false,
+    "skills": [
+        "infer-conventions",
+        "deploying-to-cloud",
+        "laravel-best-practices",
+        "testing-best-practices",
+        "tailwindcss-development",
+        "debug-using-debugbar"
+    ]
 }
