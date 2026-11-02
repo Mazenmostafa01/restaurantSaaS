@@ -3,7 +3,7 @@
         "antigravity"
     ],
     "cloud": true,
-    "guidelines": true,
+    "guidelines": false,
     "mcp": true,
     "nightwatch_mcp": false,
     "packages": [
