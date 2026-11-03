@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Http\Resources\MenuItemResource;
 use App\Models\Item;
 use App\Models\Restaurant;
 use Closure;
@@ -37,27 +36,6 @@ class TenantCacheService
         }
 
         return Cache::remember($this->menuKey($tenantId), $ttl, $callback);
-    }
-
-    public function getCategorizedMenu(): array
-    {
-        return $this->rememberMenu(function (): array {
-            $itemsByCategory = Item::with('attachments')
-                ->orderBy('category')
-                ->orderBy('name')
-                ->get()
-                ->groupBy('category');
-
-            $menu = [];
-            foreach ($itemsByCategory as $category => $categoryItems) {
-                $menu[] = [
-                    'category' => $category,
-                    'items' => MenuItemResource::collection($categoryItems)->resolve(),
-                ];
-            }
-
-            return $menu;
-        });
     }
 
     public function getAiMenuDigest(): array

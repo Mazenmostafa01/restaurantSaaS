@@ -55,4 +55,28 @@ readonly class OrderWriteData
             orderNumberPrefix: 'C-',
         );
     }
+
+    public static function fromParsedOrder(
+        ParsedOrderData $parsedOrder,
+        ?int $userId = null,
+        ?int $customerId = null,
+        string $type = 'take_away',
+        string $orderNumberPrefix = 'AI-',
+    ): self {
+        $quantities = [];
+
+        foreach ($parsedOrder->matchedItems as $item) {
+            $itemId = (int) $item['id'];
+            $quantities[$itemId] = ($quantities[$itemId] ?? 0) + (int) $item['quantity'];
+        }
+
+        return new self(
+            type: $type,
+            itemQuantities: $quantities,
+            note: $parsedOrder->combinedKitchenNote(),
+            userId: $userId,
+            customerId: $customerId,
+            orderNumberPrefix: $orderNumberPrefix,
+        );
+    }
 }
