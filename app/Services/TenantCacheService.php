@@ -71,11 +71,20 @@ class TenantCacheService
      */
     public function getMenuItemsById(): array
     {
-        return Item::query()
+        $tenantId = $this->tenant->id();
+        $ttl = $this->menuTtl();
+
+        $fetch = static fn (): array => Item::query()
             ->select(['id', 'restaurant_id', 'name', 'price', 'category'])
             ->get()
             ->keyBy('id')
             ->all();
+
+        if ($tenantId === null || $ttl <= 0) {
+            return $fetch();
+        }
+
+        return Cache::remember($this->menuItemsByIdKey($tenantId), $ttl, $fetch);
     }
 
     public function forgetMenu(?int $tenantId = null): void
@@ -84,6 +93,7 @@ class TenantCacheService
         if ($id !== null) {
             Cache::forget($this->menuKey($id));
             Cache::forget($this->aiMenuDigestKey($id));
+            Cache::forget($this->menuItemsByIdKey($id));
         }
     }
 
@@ -173,6 +183,11 @@ class TenantCacheService
     private function aiMenuDigestKey(int $tenantId): string
     {
         return "tenant:{$tenantId}:ai_menu_digest";
+    }
+
+    private function menuItemsByIdKey(int $tenantId): string
+    {
+        return "tenant:{$tenantId}:menu_items_by_id";
     }
 
     private function dashboardKey(int $tenantId): string

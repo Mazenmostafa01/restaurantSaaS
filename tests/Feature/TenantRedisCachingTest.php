@@ -140,9 +140,16 @@ class TenantRedisCachingTest extends TestCase
         $this->assertSame(150.0, $digest[0]['price']);
         $this->assertArrayNotHasKey('attachments', $digest[0]);
 
+        $itemsKey = "tenant:{$this->restaurant->id}:menu_items_by_id";
+        Cache::forget($itemsKey);
+        $items = $cacheService->getMenuItemsById();
+        $this->assertTrue(Cache::has($itemsKey));
+        $this->assertNotEmpty($items);
+
         // Invalidate via forgetMenu
         $cacheService->forgetMenu();
         $this->assertFalse(Cache::has($digestKey));
+        $this->assertFalse(Cache::has($itemsKey));
     }
 
     public function test_dashboard_analytics_is_cached_and_served_by_ttl_without_order_thrashing(): void
