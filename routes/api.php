@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Customer\CustomerAuthController;
 use App\Http\Controllers\Api\Customer\CustomerMenuController;
 use App\Http\Controllers\Api\Customer\CustomerOrderController;
+use App\Http\Controllers\Api\Customer\CustomerOrderParseController;
 use App\Http\Controllers\Api\Customer\CustomerProfileController;
 use App\Http\Controllers\Api\Customer\CustomerRestaurantController;
 use Illuminate\Http\Request;
@@ -52,6 +53,8 @@ Route::prefix('customer/{restaurant:slug}')
         // Orders
         Route::get('/orders', [CustomerOrderController::class, 'index']);
         Route::post('/orders', [CustomerOrderController::class, 'store']);
+        Route::post('/orders/parse', CustomerOrderParseController::class)
+            ->middleware('throttle:ai-order-parse');
         Route::get('/orders/{order}', [CustomerOrderController::class, 'show']);
     });
 

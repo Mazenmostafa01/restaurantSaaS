@@ -11,6 +11,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class ParsedOrderResource extends JsonResource
 {
+    public static $wrap = null;
+
     /**
      * @return array<string, mixed>
      */

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useRef } from "react";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useRestaurant } from "../context/RestaurantContext";
@@ -18,11 +18,16 @@ export default function CheckoutPage() {
     const { items, subtotal, tax, total, clearCart } = useCart();
     const { api } = useRestaurant();
     const navigate = useNavigate();
+    const orderPlacedRef = useRef(false);
 
     const [type, setType] = useState("take_away");
     const [note, setNote] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+
+    if (items.length === 0 && !orderPlacedRef.current) {
+        return <Navigate to="/" replace />;
+    }
 
     if (!customer) {
         return (
@@ -60,11 +65,6 @@ export default function CheckoutPage() {
         );
     }
 
-    if (items.length === 0) {
-        navigate("/");
-        return null;
-    }
-
     const handleChipClick = (chipText) => {
         setNote((prev) => {
             if (!prev) return chipText;
@@ -86,11 +86,11 @@ export default function CheckoutPage() {
             };
 
             const orderResponse = await api.placeOrder(payload);
+            orderPlacedRef.current = true;
             clearCart();
             navigate(`/orders/${orderResponse.order.id}`);
         } catch (err) {
             setError(err.response?.data?.message || "Failed to place order. Please try again.");
-        } finally {
             setSubmitting(false);
         }
     };
