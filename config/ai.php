@@ -163,7 +163,7 @@ return [
 
     'order_parser' => [
         'provider' => env('AI_ORDER_PARSER_PROVIDER', 'gemini'),
-        'model' => env('AI_ORDER_PARSER_MODEL', 'gemini-2.5-flash'),
+        'model' => env('AI_ORDER_PARSER_MODEL', 'gemini-3.5-flash-lite'),
         'min_confidence' => (float) env('AI_ORDER_MIN_CONFIDENCE', 0.65),
         'max_audio_seconds' => (int) env('AI_ORDER_MAX_AUDIO_SECONDS', 45),
         'max_audio_kb' => (int) env('AI_ORDER_MAX_AUDIO_KB', 3072),

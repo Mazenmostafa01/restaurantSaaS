@@ -21,6 +21,36 @@ export function createCustomerApi(slug) {
             const response = await client.post("/orders", payload);
             return response.data;
         },
+        parseNaturalLanguageOrder: async ({
+            text = "",
+            audioBlob = null,
+            audioFilename = "voice-order.webm",
+            preferredLanguage = null,
+        }) => {
+            if (audioBlob) {
+                const formData = new FormData();
+                formData.append("audio", audioBlob, audioFilename);
+                if (text && text.trim()) {
+                    formData.append("text", text.trim());
+                }
+                if (preferredLanguage) {
+                    formData.append("preferred_language", preferredLanguage);
+                }
+                const response = await client.post("/orders/parse", formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                });
+                return response.data;
+            }
+
+            const payload = { text: text.trim() };
+            if (preferredLanguage) {
+                payload.preferred_language = preferredLanguage;
+            }
+            const response = await client.post("/orders/parse", payload);
+            return response.data;
+        },
         fetchCurrentCustomer: async () => {
             const response = await client.get("/user");
             return response.data.customer;

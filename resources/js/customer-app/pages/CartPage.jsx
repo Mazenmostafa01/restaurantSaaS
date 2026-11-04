@@ -1,11 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useMenu } from "../hooks/useMenu";
 import CartItem from "../components/cart/CartItem";
+import AiOrderModal from "../components/ai/AiOrderModal";
+import GroupBillSplitCard from "../components/ai/GroupBillSplitCard";
 
 export default function CartPage() {
-    const { items, subtotal, tax, total, clearCart, totalItems } = useCart();
+    const {
+        items,
+        subtotal,
+        tax,
+        total,
+        clearCart,
+        totalItems,
+        orderNote,
+        orderSplits,
+        setOrderSplits,
+    } = useCart();
+    const { allItems } = useMenu();
     const navigate = useNavigate();
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
     if (items.length === 0) {
         return (
@@ -24,11 +39,29 @@ export default function CartPage() {
                         </svg>
                     </div>
                     <h3>Your cart is empty</h3>
-                    <p>Explore our kitchen's specialties and add your favorite dishes!</p>
-                    <Link to="/" className="btn btn-primary" style={{ marginTop: "8px" }}>
-                        Explore Menu
-                    </Link>
+                    <p>
+                        Explore our kitchen&apos;s specialties or tell our AI
+                        what you&apos;d like in Arabic, Franco, or by voice!
+                    </p>
+                    <div className="cart-empty-actions">
+                        <Link to="/" className="btn btn-primary">
+                            Explore Menu
+                        </Link>
+                        <button
+                            type="button"
+                            className="btn btn-outline ai-cart-cta-btn"
+                            onClick={() => setIsAiModalOpen(true)}
+                        >
+                            <span>✨ Order with AI / Voice</span>
+                        </button>
+                    </div>
                 </div>
+
+                <AiOrderModal
+                    isOpen={isAiModalOpen}
+                    onClose={() => setIsAiModalOpen(false)}
+                    allItems={allItems}
+                />
             </div>
         );
     }
@@ -42,25 +75,52 @@ export default function CartPage() {
             <div className="cart-page-header">
                 <div>
                     <h2 className="page-title">Your Order</h2>
-                    <span style={{ fontSize: "13px", color: "var(--c-text-muted)" }}>
-                        {totalItems} {totalItems === 1 ? "item" : "items"} in cart
+                    <span
+                        style={{
+                            fontSize: "13px",
+                            color: "var(--c-text-muted)",
+                        }}
+                    >
+                        {totalItems} {totalItems === 1 ? "item" : "items"} in
+                        cart
                     </span>
                 </div>
-                <button
-                    type="button"
-                    className="cart-clear-btn"
-                    onClick={clearCart}
-                    aria-label="Clear all items from cart"
-                >
-                    Clear All
-                </button>
+                <div className="cart-header-actions">
+                    <button
+                        type="button"
+                        className="ai-trigger-btn compact"
+                        onClick={() => setIsAiModalOpen(true)}
+                    >
+                        <span>✨ Add with AI</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="cart-clear-btn"
+                        onClick={clearCart}
+                        aria-label="Clear all items from cart"
+                    >
+                        Clear All
+                    </button>
+                </div>
             </div>
 
             <div className="cart-items-list">
-                {items.map((item) => (
-                    <CartItem key={item.id} item={item} />
+                {items.map((cartDish) => (
+                    <CartItem key={cartDish.id} item={cartDish} />
                 ))}
             </div>
+
+            {orderNote && (
+                <div className="ai-cart-note-banner" dir="auto">
+                    <span>📝 Kitchen Note:</span> <strong>{orderNote}</strong>
+                </div>
+            )}
+
+            <GroupBillSplitCard
+                splits={orderSplits}
+                onDismiss={() => setOrderSplits(null)}
+                style={{ marginBottom: "20px" }}
+            />
 
             <div className="cart-summary">
                 <div className="cart-summary-row">
@@ -87,6 +147,12 @@ export default function CartPage() {
                 <span>•</span>
                 <span>{total.toFixed(2)} EGP</span>
             </button>
+
+            <AiOrderModal
+                isOpen={isAiModalOpen}
+                onClose={() => setIsAiModalOpen(false)}
+                allItems={allItems}
+            />
         </div>
     );
 }

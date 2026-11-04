@@ -3,6 +3,7 @@ import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useRestaurant } from "../context/RestaurantContext";
+import GroupBillSplitCard from "../components/ai/GroupBillSplitCard";
 
 const QUICK_NOTES = [
     "No onions 🧅",
@@ -15,13 +16,22 @@ const QUICK_NOTES = [
 
 export default function CheckoutPage() {
     const { customer } = useAuth();
-    const { items, subtotal, tax, total, clearCart } = useCart();
+    const {
+        items,
+        subtotal,
+        tax,
+        total,
+        clearCart,
+        orderNote,
+        setOrderNote,
+        orderSplits,
+    } = useCart();
     const { api } = useRestaurant();
     const navigate = useNavigate();
     const orderPlacedRef = useRef(false);
 
     const [type, setType] = useState("take_away");
-    const [note, setNote] = useState("");
+    const [note, setNote] = useState(() => orderNote || "");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
@@ -67,9 +77,13 @@ export default function CheckoutPage() {
 
     const handleChipClick = (chipText) => {
         setNote((prev) => {
-            if (!prev) return chipText;
-            if (prev.includes(chipText)) return prev;
-            return `${prev}, ${chipText}`;
+            const next = !prev
+                ? chipText
+                : prev.includes(chipText)
+                  ? prev
+                  : `${prev}, ${chipText}`;
+            setOrderNote(next.slice(0, 255));
+            return next.slice(0, 255);
         });
     };
 
@@ -140,6 +154,8 @@ export default function CheckoutPage() {
                 </div>
             </div>
 
+            <GroupBillSplitCard splits={orderSplits} />
+
             {/* Checkout Form */}
             <form onSubmit={handleSubmit} className="checkout-form">
                 {/* Order Type */}
@@ -192,9 +208,14 @@ export default function CheckoutPage() {
                     </label>
                     <textarea
                         id="note"
+                        dir="auto"
+                        maxLength={255}
                         className="form-textarea"
                         value={note}
-                        onChange={(e) => setNote(e.target.value)}
+                        onChange={(e) => {
+                            setNote(e.target.value);
+                            setOrderNote(e.target.value);
+                        }}
                         placeholder="e.g. Please pack sauces separately, ring bell upon arrival..."
                         rows={3}
                     />

@@ -3,19 +3,11 @@
 namespace App\Ai\Agents;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Ai\Attributes\Model;
-use Laravel\Ai\Attributes\Provider;
-use Laravel\Ai\Attributes\Temperature;
-use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 
-#[Provider(Lab::Gemini)]
-#[Model('gemini-2.5-flash')]
-#[Temperature(0.1)]
-#[Timeout(12)]
 class OrderParserAgent implements Agent, HasStructuredOutput
 {
     use Promptable;
@@ -27,6 +19,26 @@ class OrderParserAgent implements Agent, HasStructuredOutput
         public readonly string $restaurantName = 'Restaurant',
         public readonly array $menuDigest = [],
     ) {}
+
+    public function model(): string
+    {
+        return (string) config('ai.order_parser.model', 'gemini-3.5-flash');
+    }
+
+    public function provider(): string|Lab
+    {
+        return config('ai.order_parser.provider', Lab::Gemini);
+    }
+
+    public function timeout(): int
+    {
+        return (int) config('ai.order_parser.timeout_seconds', 12);
+    }
+
+    public function temperature(): float
+    {
+        return 0.1;
+    }
 
     public function instructions(): string
     {

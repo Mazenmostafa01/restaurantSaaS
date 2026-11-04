@@ -23,6 +23,11 @@ export default function CartItem({ item }) {
                     <span className="cart-item-price">
                         {itemTotal} EGP <span style={{ fontSize: '11px', color: 'var(--c-text-subtle)', fontWeight: 400 }}>({item.price} ea)</span>
                     </span>
+                    {item.ai_note && (
+                        <span className="ai-item-note-pill" dir="auto">
+                            📝 {item.ai_note}
+                        </span>
+                    )}
                 </div>
             </div>
             <div className="cart-item-controls">

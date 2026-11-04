@@ -5,6 +5,7 @@ import { useMenu } from "../hooks/useMenu";
 import MenuCard from "../components/menu/MenuCard";
 import CategoryTabs from "../components/menu/CategoryTabs";
 import DishDetailModal from "../components/menu/DishDetailModal";
+import AiOrderModal from "../components/ai/AiOrderModal";
 
 export default function MenuPage() {
     const { restaurant } = useRestaurant();
@@ -24,6 +25,7 @@ export default function MenuPage() {
 
     const [selectedDish, setSelectedDish] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
     const handleOpenDishModal = (dish) => {
         setSelectedDish(dish);
@@ -108,8 +110,8 @@ export default function MenuPage() {
                 </div>
             </div>
 
-            {/* Instant Search Bar */}
-            <div className="search-bar-wrapper">
+            {/* Instant Search Bar + AI Smart Order Trigger */}
+            <div className="search-bar-wrapper search-bar-with-ai">
                 <div className="search-input-box">
                     <svg
                         viewBox="0 0 24 24"
@@ -140,6 +142,30 @@ export default function MenuPage() {
                         </button>
                     )}
                 </div>
+
+                <button
+                    type="button"
+                    className="ai-trigger-btn"
+                    onClick={() => setIsAiModalOpen(true)}
+                    aria-label="Open AI Smart Order by Voice or Text"
+                >
+                    <span className="ai-trigger-icon" aria-hidden="true">
+                        ✨
+                    </span>
+                    <span className="ai-trigger-text">AI Order</span>
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        width="16"
+                        height="16"
+                        aria-hidden="true"
+                    >
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                        <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                    </svg>
+                </button>
             </div>
 
             {/* Sticky Category Tabs */}
@@ -203,6 +229,13 @@ export default function MenuPage() {
                 isOpen={isModalOpen}
                 onClose={handleCloseDishModal}
                 onAddToCart={addItem}
+            />
+
+            {/* AI Smart Order Modal */}
+            <AiOrderModal
+                isOpen={isAiModalOpen}
+                onClose={() => setIsAiModalOpen(false)}
+                allItems={allItems}
             />
         </div>
     );
