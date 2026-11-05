@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import { useNavigate } from "react-router-dom";
 import GroupBillSplitCard from "./GroupBillSplitCard";
 
 export default function AiOrderReview({
@@ -12,8 +13,18 @@ export default function AiOrderReview({
     onEditPrompt,
     onAddToCart,
     onCheckout,
+    onBrowseMenu,
 }) {
     const noteInputId = useId();
+    const navigate = useNavigate();
+
+    const handleBrowseMenu = () => {
+        if (onBrowseMenu) {
+            onBrowseMenu();
+        } else {
+            navigate("/menu");
+        }
+    };
 
     const subtotal = items.reduce(
         (sum, dish) => sum + dish.price_raw * dish.quantity,
@@ -211,24 +222,35 @@ export default function AiOrderReview({
             </div>
 
             <div className="ai-review-actions">
-                <button
-                    type="button"
-                    className="btn btn-outline"
-                    disabled={items.length === 0}
-                    onClick={onAddToCart}
-                >
-                    Add to Cart ({totalCount})
-                </button>
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={items.length === 0}
-                    onClick={onCheckout}
-                >
-                    <span>Checkout Now</span>
-                    <span>•</span>
-                    <span>{total.toFixed(2)} EGP</span>
-                </button>
+                {items.length === 0 ? (
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ gridColumn: "1 / -1" }}
+                        onClick={handleBrowseMenu}
+                    >
+                        Browse Menu
+                    </button>
+                ) : (
+                    <>
+                        <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={onAddToCart}
+                        >
+                            Add to Cart ({totalCount})
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={onCheckout}
+                        >
+                            <span>Checkout Now</span>
+                            <span>•</span>
+                            <span>{total.toFixed(2)} EGP</span>
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );

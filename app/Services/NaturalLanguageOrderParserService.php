@@ -47,12 +47,16 @@ class NaturalLanguageOrderParserService
             menuDigest: $menuDigest,
         );
 
+        $timeoutSeconds = $orderInput->hasAudio()
+            ? (int) config('ai.order_parser.audio_timeout_seconds', 60)
+            : (int) config('ai.order_parser.timeout_seconds', 30);
+
         $response = $agent->prompt(
             $promptText,
             attachments: $attachments,
             provider: config('ai.order_parser.provider'),
             model: config('ai.order_parser.model'),
-            timeout: (int) config('ai.order_parser.timeout_seconds', 12),
+            timeout: $timeoutSeconds,
         );
 
         $rawMatched = (array) ($response['matched_items'] ?? []);

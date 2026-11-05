@@ -167,8 +167,9 @@ return [
         'min_confidence' => (float) env('AI_ORDER_MIN_CONFIDENCE', 0.65),
         'max_audio_seconds' => (int) env('AI_ORDER_MAX_AUDIO_SECONDS', 45),
         'max_audio_kb' => (int) env('AI_ORDER_MAX_AUDIO_KB', 3072),
-        'timeout_seconds' => (int) env('AI_ORDER_TIMEOUT_SECONDS', 12),
-        'connect_timeout_seconds' => (int) env('AI_ORDER_CONNECT_TIMEOUT_SECONDS', 3),
+        'timeout_seconds' => (int) env('AI_ORDER_TIMEOUT_SECONDS', 30),
+        'audio_timeout_seconds' => (int) env('AI_ORDER_AUDIO_TIMEOUT_SECONDS', 60),
+        'connect_timeout_seconds' => (int) env('AI_ORDER_CONNECT_TIMEOUT_SECONDS', 5),
     ],
 
 ];

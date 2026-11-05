@@ -32,7 +32,7 @@ class OrderParserAgent implements Agent, HasStructuredOutput
 
     public function timeout(): int
     {
-        return (int) config('ai.order_parser.timeout_seconds', 12);
+        return (int) config('ai.order_parser.timeout_seconds', 30);
     }
 
     public function temperature(): float

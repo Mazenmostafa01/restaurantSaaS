@@ -231,6 +231,11 @@ export default function AiOrderModal({ isOpen, onClose, allItems = [] }) {
         }
     };
 
+    const handleBrowseMenu = () => {
+        handleClose();
+        navigate("/menu");
+    };
+
     return (
         <NativeModal
             isOpen={isOpen}
@@ -274,6 +279,7 @@ export default function AiOrderModal({ isOpen, onClose, allItems = [] }) {
                     }}
                     onAddToCart={() => commitReviewedOrder(false)}
                     onCheckout={() => commitReviewedOrder(true)}
+                    onBrowseMenu={handleBrowseMenu}
                 />
             )}
         </NativeModal>

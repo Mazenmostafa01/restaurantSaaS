@@ -11,6 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Ai\Exceptions\ProviderConnectionException;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -343,5 +345,51 @@ class CustomerOrderParseTest extends TestCase
         ]);
 
         OrderParserAgent::assertNeverPrompted();
+    }
+
+    public function test_handles_provider_connection_exception_with_504_json(): void
+    {
+        Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Burger',
+            'price' => 100.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake(function () {
+            throw ProviderConnectionException::forProvider('gemini', 0, new \Exception('cURL error 28: Operation timed out'));
+        });
+
+        Sanctum::actingAs($this->customer, ['*']);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => '1 burger',
+        ]);
+
+        $response->assertStatus(504);
+        $response->assertJsonStructure(['message']);
+    }
+
+    public function test_handles_provider_overloaded_exception_with_503_json(): void
+    {
+        Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Burger',
+            'price' => 100.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake(function () {
+            throw ProviderOverloadedException::forProvider('gemini', 503, new \Exception('High demand'));
+        });
+
+        Sanctum::actingAs($this->customer, ['*']);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => '1 burger',
+        ]);
+
+        $response->assertStatus(503);
+        $response->assertJsonStructure(['message']);
     }
 }
