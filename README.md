@@ -1,61 +1,156 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# aklaSaaS 🍽️🤖
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**aklaSaaS** is a multi-tenant Laravel 13 Software-as-a-Service (SaaS) platform built for restaurants. A single deployment powers multiple restaurant tenants with isolated staff portals, customer single-page applications (SPAs), real-time order broadcasting, and an integrated **AI Natural Language & Voice Smart Ordering System** powered by `laravel/ai` and Google Gemini.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🌟 Key Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 🏢 Multi-Tenancy Architecture
+- **Strict Isolation**: `Restaurant` is the root tenant. The `BelongsToTenant` trait automatically scopes queries via `TenantScope` and stamps `restaurant_id` on model creation.
+- **Cross-Tenant Protection**: Dynamic route middlewares (`SetTenantContext` for staff, `SetCustomerTenantContext` for customer API) strictly enforce tenant boundaries and block cross-tenant token access.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 👥 Dual Population & Frontends
+- **Admin & Staff Portal**: Server-rendered Blade interface at `/` with Spatie RBAC (`Admin` and `Employee` roles) for menu management, order taking, and dashboard analytics.
+- **Customer React SPA**: Modern React 19 SPA mounted at `/{restaurant:slug}` with live cart state, category browsing, and order history.
 
-## Learning Laravel
+### 🎙️ AI Natural Language & Voice Order Parser (`laravel/ai`)
+- **Voice & Text Ordering**: Customers can dictate orders via spoken voice notes ($\le 45\text{s}$ / $3\text{MB}$) or type freeform text.
+- **Egyptian Arabic & Franco Support**: Handles spoken Egyptian Arabic (اللهجة المصرية), grammatical dual forms (المثنى: e.g. "ساندوتشين" $\to$ quantity 2, "كريبين" $\to$ 2), colloquial food terms, and Franco-Arabic (Arabizi: e.g. "2 burger w 1 batates").
+- **"El-Shilla" Group Bill Splitting**: Automatically attributes items to individual friends (e.g. "Ahmed: 2 burger, Mona: 1 crepe") and computes itemized individual subtotals.
+- **Interactive Review Modal**: Editable dishes, note customizations, and candidate suggestions for unrecognized items ("Did you mean...?").
+- **Zero-Trust Security & Server-Authoritative Pricing**: Model responses are strictly grounded on the active restaurant's cached menu digest. Hallucinated or cross-tenant IDs are demoted to unmatched items, and prices + 14% VAT are calculated server-side from database models.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### ⚡ Performance & Real-Time Broadcasting
+- **Dual Redis Caching**: Menu payloads (`tenant:{id}:menu`) and AI prompt digests (`tenant:{id}:ai_menu_digest`) are cached in Redis with automatic invalidation parity on item updates.
+- **Laravel Reverb**: Real-time WebSocket broadcasting for dish availability and menu synchronization.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 🛠️ Tech Stack
 
-## Laravel Sponsors
+| Layer | Technology |
+|---|---|
+| **Backend Framework** | [Laravel 13](https://laravel.com) running on PHP 8.4 |
+| **AI SDK** | [`laravel/ai`](https://laravel.com/docs/13.x/ai-sdk) + [Google Gemini 3.5 Flash Lite / 2.5 Flash](https://ai.google.dev/) |
+| **Database** | MySQL with compound tenant indexes |
+| **Cache & Queue** | Redis |
+| **WebSockets** | [Laravel Reverb](https://reverb.laravel.com/) |
+| **Admin Frontend** | Laravel Blade + Tailwind CSS 4 + Alpine.js |
+| **Customer Frontend** | React 19 SPA + React Router 7 + Lucide Icons |
+| **Authentication & RBAC** | Laravel Sanctum (Customer tokens) + Spatie Permission (Staff roles) |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🚀 Quick Start & Local Setup
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Prerequisites
+- PHP 8.4+ with `pdo_mysql`, `redis`, `mbstring`, `fileinfo` extensions
+- Composer
+- Node.js 20+ & npm
+- MySQL & Redis
+- [Laravel Herd](https://herd.laravel.com) (Recommended) or PHP CLI
 
-## Contributing
+### 1. Clone & Install Dependencies
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+git clone <repository_url> restaurantSaaS
+cd restaurantSaaS
 
-## Code of Conduct
+# Install PHP dependencies
+composer install
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Install JS dependencies
+npm install
+```
 
-## Security Vulnerabilities
+### 2. Environment Configuration
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Copy `.env.example` to `.env` and generate an application key:
 
-## License
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Configure your database, Redis, and AI keys in `.env`:
+
+```dotenv
+APP_NAME="aklaSaaS"
+APP_URL=http://restaurantsaas.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=restaurant_saas
+DB_USERNAME=root
+DB_PASSWORD=
+
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+# Google Gemini API key for AI order parsing
+GEMINI_API_KEY=your_gemini_api_key_here
+AI_DEFAULT_PROVIDER=gemini
+AI_ORDER_PARSER_MODEL=gemini-3.5-flash-lite
+```
+
+### 3. Run Migrations & Storage Link
+
+```bash
+php artisan migrate
+php artisan storage:link
+```
+
+### 4. Build Frontend Assets & Run Dev Servers
+
+```bash
+# Build React & Tailwind assets
+npm run build
+
+# Or run during development
+npm run dev
+```
+
+---
+
+## 🤖 AI Smart Ordering Usage
+
+1. **Browse as Customer**: Navigate to `http://restaurantsaas.test/{restaurant-slug}/menu`.
+2. **Launch AI Modal**: Click the **✨ AI Smart Order** button in the header, menu banner, or cart.
+3. **Voice or Text**:
+   - **Voice**: Click the microphone icon to record your order (up to 45 seconds).
+   - **Text**: Type naturally in Arabic, Franco, or English (e.g., `"عايز اتنين برجر واحد بدون بصل وواحد كريب، وأحمد عايز بيبسي"`).
+4. **Review & Confirm**: Review matched items, edit quantities, inspect group split cards, and add directly to your cart.
+
+---
+
+## 🧪 Testing & Verification
+
+Run the test suite using PHPUnit or Artisan:
+
+```bash
+# Run AI Parser feature & unit tests
+php artisan test --compact tests/Feature/CustomerOrderParseTest.php
+php artisan test --compact tests/Unit/NaturalLanguageOrderParserServiceTest.php
+
+# Run Tenant Redis Caching tests
+php artisan test --compact tests/Feature/TenantRedisCachingTest.php
+
+# Run full test suite
+php artisan test --compact
+
+# Code style formatter (Laravel Pint)
+vendor/bin/pint --dirty --format agent
+```
+
+---
+
+## 📚 Technical Documentation
+
+For in-depth architecture, API contracts, and implementation details:
+
+- **[`AGENTS.md`](./AGENTS.md)**: Primary instructions and strict constraints for AI coding agents.
+- **[`docs/architecture.md`](./docs/architecture.md)**: Comprehensive architectural guide (tenancy, guards, Spatie RBAC, database schema).
+- **[`docs/ai-ordering.md`](./docs/ai-ordering.md)**: Deep technical dive into `laravel/ai`, prompt engineering, Egyptian Arabic nuances, and security guards.
+- **[`docs/README.md`](./docs/README.md)**: Technical documentation index.

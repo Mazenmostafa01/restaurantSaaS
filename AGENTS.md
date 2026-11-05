@@ -16,8 +16,11 @@ aklaSaaS is a **multi-tenant Laravel 13 SaaS for restaurants**. One
 installation serves many restaurants. Each restaurant has staff
 (`admin` + `employee` roles via Spatie) and end customers. Staff use a
 Blade-rendered admin panel at `/`. Customers use a React SPA served
-from `/{restaurant:slug}/...`. Backend is Laravel 13 + MySQL + Reverb
-(WebSockets) + Sanctum (auth) + Spatie (RBAC).
+from `/{restaurant:slug}/...`. Customers can also place orders via
+**voice notes and natural language text (Egyptian Arabic, Franco, English)**
+powered by `laravel/ai` and Google Gemini with automatic bill splitting.
+Backend is Laravel 13 + MySQL + Redis + Reverb (WebSockets) + Sanctum (auth)
++ Spatie (RBAC) + Laravel AI SDK.
 
 ## 2. The non-negotiable rule: tenancy
 
@@ -75,38 +78,62 @@ can never log in via `web`. They share `Restaurant` only.
 
 ```
 app/
+├── Ai/
+│   └── Agents/OrderParserAgent.php        # laravel/ai Agent with structured JSON schema
+├── DTOs/
+│   ├── OrderParseData.php                 # normalized parse input (text, audio, channel)
+│   ├── AudioPayload.php                   # uploaded file or base64 audio encapsulation
+│   ├── ParsedOrderData.php                # structured parse output (items, unmatched, splits)
+│   ├── ParsePricing.php, ParseMetadata.php
+│   └── OrderWriteData.php                 # bridge DTO mapping parse output to OrderService
 ├── Http/
 │   ├── Controllers/
 │   │   ├── AuthController.php             # admin web auth
 │   │   ├── ItemController.php             # admin: items CRUD (admin-only for edit/delete)
 │   │   ├── OrderController.php            # admin: orders CRUD (admin-only for edit/delete)
 │   │   ├── Dashboard/DashBoardController.php  # admin: analytics (admin-only)
-│   │   └── Api/Customer/                  # customer JSON API (5 controllers)
+│   │   └── Api/Customer/                  # customer JSON API (6 controllers including CustomerOrderParseController)
 │   ├── Middleware/
 │   │   ├── SetTenantContext.php           # admin tenant resolver
 │   │   └── SetCustomerTenantContext.php   # customer tenant resolver (with cross-tenant check)
-│   └── Requests/                          # FormRequest validation (scoped by tenant)
+│   ├── Requests/                          # FormRequest validation (scoped by tenant)
+│   └── Resources/ParsedOrderResource.php  # JSON resource for AI order output
 ├── Models/
 │   ├── Restaurant.php                     # the tenant
 │   ├── User.php                           # admin staff (BelongsToTenant + HasRoles)
 │   ├── Customer.php                       # end customer (BelongsToTenant + HasApiTokens)
 │   ├── Item.php, Order.php, Attachment.php
 │   └── Scopes/TenantScope.php             # global query filter
-├── Services/TenantContext.php             # singleton: current Restaurant
+├── Services/
+│   ├── TenantContext.php                  # singleton: current Restaurant
+│   ├── TenantCacheService.php             # Redis menu, AI digest & dashboard caching
+│   ├── NaturalLanguageOrderParserService.php # AI parsing pipeline + security/tenancy guard
+│   └── OrderService.php                   # order creation & transactional persistence
 ├── Traits/
 │   ├── BelongsToTenant.php                # registers scope + auto-stamps restaurant_id
 │   └── Calculation.php                    # tax/subtotal math (14% flat tax)
 └── Events/ItemUpdateEvent.php             # broadcast on item update (Reverb)
 
+config/
+└── ai.php                                 # Laravel AI SDK & order parser configuration
+
 routes/
 ├── web.php                                # admin routes + customer SPA catch-all (catch-all is LAST)
-├── api.php                                # customer JSON API
+├── api.php                                # customer JSON API (incl. /orders/parse)
 └── channels.php                           # Reverb broadcast auth
 
 resources/
 ├── js/app.js                              # admin panel entry
-├── js/customer-app/                       # customer React SPA (App.jsx, pages/, components/, context/)
+├── js/customer-app/                       # customer React SPA
+│   ├── components/ai/                     # AiOrderModal, AiOrderReview, VoiceRecorderWidget, etc.
+│   ├── hooks/useVoiceRecorder.js          # MediaRecorder audio recording hook
+│   └── context/CartContext.jsx            # batch item addition with split bills
 └── views/customer/spa.blade.php           # Blade shell that mounts React with window.__RESTAURANT__
+
+docs/
+├── architecture.md                        # comprehensive system architecture
+├── ai-ordering.md                         # complete reference for AI voice/text ordering
+└── README.md                              # documentation index
 
 database/migrations/                       # see docs/architecture.md §6
 ```
@@ -151,6 +178,25 @@ if ($tenantId !== null) {
 
 This is the convention in `AddItemRequest`, `UpdateItemRequest`,
 `OrderCreateRequest`, `OrderUpdateRequest`.
+
+### Adding or modifying AI features (`laravel/ai`)
+
+1. **Keep `laravel/ai` Agents stateless**: `OrderParserAgent` implements `Agent` and `HasStructuredOutput`. It takes `$restaurantName` and `$menuDigest` in its constructor and defines its JSON schema via `schema(JsonSchema $schema)`.
+2. **Strict menu digest grounding**: Never prompt an LLM without the tenant's cached menu digest. Use `TenantCacheService::getAiMenuDigest()` (cached under `tenant:{id}:ai_menu_digest`), which contains only `id`, `name`, `category`, `price`, and truncated `description`.
+3. **Deterministic security guard (Zero Trust on AI outputs)**: In `NaturalLanguageOrderParserService`:
+   - Verify every returned item ID against `TenantCacheService::getMenuItemsById()`. If an ID does not exist or has a different `restaurant_id`, demote it to `unmatched_items` with `reason: 'not_on_menu'`.
+   - Filter by confidence: If `confidence < config('ai.order_parser.min_confidence')` (default 0.65), demote to `unmatched_items` with `reason: 'ambiguous'`.
+   - Never use AI-generated prices: Always calculate subtotal from authoritative database item models, compute 14% tax via `Calculation::tax()`, and populate `ParsePricing`.
+4. **Channel & DTO decoupling**:
+   - Ingestion: Use `OrderParseData` (`fromCustomerRequest` or `fromWhatsApp`).
+   - Output: `ParsedOrderData` with `ParsePricing` and `ParseMetadata`.
+   - Bridge to persistence: `OrderWriteData::fromParsedOrder($parsedOrder, ...)` converts parsed data into the format expected by `OrderService::createOrder()`.
+5. **Language & Dialect rules in prompts**:
+   - Egyptian Arabic duals (e.g. "ساندوتشين" $\to$ quantity 2, "كريبين" $\to$ 2, "كانزيتين" $\to$ 2).
+   - Franco-Arabic (Arabizi) numbers (2=ء, 3=ع, 5=خ, 7=ح, 8=غ).
+   - Distinguish item customizations (put into item `note`) from general kitchen/delivery instructions (put into top-level `notes` array).
+   - Group bill splitting ("El-Shilla"): Attribute items to people if names are mentioned and build the `splits` dictionary.
+6. **Rate limiting**: All AI parsing endpoints must be protected by the `throttle:ai-order-parse` middleware (10 requests/minute).
 
 ### Money
 
@@ -215,10 +261,14 @@ npm run build
 | Understand the tenant pattern | `app/Services/TenantContext.php` + `app/Models/Scopes/TenantScope.php` + `app/Traits/BelongsToTenant.php` |
 | Add a tenant-scoped model | `app/Models/Item.php` (cleanest example) |
 | Add a customer API endpoint | `app/Http/Controllers/Api/Customer/CustomerOrderController.php` |
+| Understand AI voice/text order parsing | `app/Ai/Agents/OrderParserAgent.php` + `app/Services/NaturalLanguageOrderParserService.php` + [`docs/ai-ordering.md`](./docs/ai-ordering.md) |
+| Inspect AI menu caching & invalidation | `app/Services/TenantCacheService.php` (`getAiMenuDigest`, `forgetMenu`) + `app/Services/ItemService.php` |
+| Review customer AI UI components | `resources/js/customer-app/components/ai/AiOrderModal.jsx` + `useVoiceRecorder.js` |
 | Add admin auth-gated routes | `routes/web.php` lines 13-40 |
 | Add a new Spatie role | `docs/architecture.md` §4 |
 | Change tax math | `app/Traits/Calculation.php` (single source) |
 | Wire a new Reverb channel | `app/Events/ItemUpdateEvent.php` + `routes/channels.php` |
+| Read system architecture | [`docs/architecture.md`](./docs/architecture.md) |
 | Run the full docs | [`docs/README.md`](./docs/README.md) |
 
 ## 9. What's intentionally not in the repo
