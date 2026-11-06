@@ -39,7 +39,7 @@ class NaturalLanguageOrderParserService
             );
         }
 
-        $attachments = $this->buildAttachments($orderInput);
+        $attachments = $orderInput->hasAudio() ? $this->buildAttachments($orderInput) : [];
         $promptText = $this->buildPromptText($orderInput);
 
         $agent = new OrderParserAgent(
@@ -355,7 +355,7 @@ class NaturalLanguageOrderParserService
         }
 
         $subtotal = round($subtotal, 2);
-        $tax = round((float) $this->tax($subtotal), 2);
+        $tax = round($this->tax($subtotal), 2);
         $netTotal = round($subtotal + $tax, 2);
 
         return new ParsePricing(
