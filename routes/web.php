@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Customer\CustomerSpaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Dashboard\DashBoardController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
@@ -12,8 +13,12 @@ Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('loginPost');
 
-Route::middleware(['auth', 'tenant'])->group(function () {
+Route::middleware(['auth', 'tenant', 'password.changed'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/password/change', [AuthController::class, 'showChangePassword'])->name('password.change');
+    Route::post('/password/change', [AuthController::class, 'updatePassword'])->name('password.change.update');
+
     Route::get('/', function () {
         return view('welcome');
     })->name('home');
@@ -48,6 +53,15 @@ Route::middleware(['auth', 'tenant'])->group(function () {
             Route::put('/update/{order}', [OrderController::class, 'update'])->name('update');
             Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
         });
+    });
+
+    Route::middleware('role:Admin')->prefix('employees')->name('employees.')->group(function () {
+        Route::get('/', [EmployeeController::class, 'index'])->name('index');
+        Route::get('/create', [EmployeeController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeController::class, 'store'])->name('store');
+        Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
+        Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
+        Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
     });
 });
 
