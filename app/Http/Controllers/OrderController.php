@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
@@ -79,9 +80,9 @@ class OrderController extends Controller
         $items = Item::orderBy('category')->get();
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
-        $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(50)->get();
+        $posConfig = $this->buildPosConfig($items, 'Place Order');
 
-        return view('admin.orders.create', compact('items', 'categories', 'orderType', 'customers'));
+        return view('admin.orders.create', compact('items', 'categories', 'orderType', 'posConfig'));
     }
 
     public function store(OrderCreateRequest $request): RedirectResponse
@@ -110,13 +111,9 @@ class OrderController extends Controller
             }
         }
 
-        $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(50)->get();
+        $posConfig = $this->buildPosConfig($items, 'Update Order', $order);
 
-        if ($order->customer && ! $customers->contains('id', $order->customer_id)) {
-            $customers->prepend($order->customer);
-        }
-
-        return view('admin.orders.edit', compact('order', 'customers', 'orderType', 'items', 'categories'));
+        return view('admin.orders.edit', compact('order', 'orderType', 'items', 'categories', 'posConfig'));
     }
 
     public function update(OrderUpdateRequest $request, Order $order): RedirectResponse
@@ -160,5 +157,74 @@ class OrderController extends Controller
         if ($type = $request->input('type')) {
             $query->where('type', $type);
         }
+    }
+
+    /**
+     * @param  Collection<int, Item>|\Illuminate\Database\Eloquent\Collection<int, Item>  $items
+     * @return array<string, mixed>
+     */
+    private function buildPosConfig(
+        $items,
+        string $submitVerb,
+        ?Order $order = null
+    ): array {
+        $originalSavedTicket = [];
+        if ($order !== null) {
+            foreach ($order->items as $orderItem) {
+                $originalSavedTicket[(int) $orderItem->id] = (int) $orderItem->pivot->quantity;
+            }
+        }
+
+        $initialTicket = [];
+        $oldItems = old('items');
+        if (is_array($oldItems)) {
+            foreach ($oldItems as $oldId => $oldVal) {
+                if (is_array($oldVal) && ($oldVal['selected'] ?? null) === 'on' && isset($oldVal['quantity']) && is_scalar($oldVal['quantity'])) {
+                    $initialTicket[(int) $oldId] = max(1, (int) $oldVal['quantity']);
+                }
+            }
+        } elseif ($order !== null) {
+            $initialTicket = $originalSavedTicket;
+        }
+
+        $rawOldCustId = old('customer_id');
+        $selectedCustomerModel = null;
+        if (is_scalar($rawOldCustId) && (string) $rawOldCustId !== '') {
+            $selectedCustomerModel = Customer::select('id', 'name', 'phone_number', 'address')
+                ->find((int) $rawOldCustId);
+        } elseif ($order !== null) {
+            $selectedCustomerModel = $order->customer;
+        }
+
+        $initialCustomer = null;
+        if ($selectedCustomerModel) {
+            $initialCustomer = [
+                'id' => $selectedCustomerModel->id,
+                'name' => $selectedCustomerModel->name,
+                'phone_number' => $selectedCustomerModel->phone_number,
+                'address' => $selectedCustomerModel->address,
+            ];
+        }
+
+        $itemsPayload = [];
+        foreach ($items as $item) {
+            $catVal = is_object($item->category) ? $item->category->value : $item->category;
+            $itemsPayload[$item->id] = [
+                'id' => $item->id,
+                'name' => $item->name,
+                'price' => (float) $item->price,
+                'category' => strtolower((string) $catVal),
+            ];
+        }
+
+        return [
+            'submitVerb' => $submitVerb,
+            'items' => $itemsPayload,
+            'initialTicket' => $initialTicket,
+            'originalSavedTicket' => $originalSavedTicket ?: (object) [],
+            'initialCustomer' => $initialCustomer,
+            'searchCustomersUrl' => route('orders.search-customers'),
+            'quickCustomerUrl' => route('orders.quick-customer'),
+        ];
     }
 }
