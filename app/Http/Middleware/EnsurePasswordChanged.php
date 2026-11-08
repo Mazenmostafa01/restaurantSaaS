@@ -18,17 +18,11 @@ class EnsurePasswordChanged
         $user = $request->user();
 
         if ($user && $user->need_password_change) {
-            if (! $request->routeIs('password.change', 'password.change.update', 'logout')) {
-                if ($request->expectsJson()) {
-                    return response()->json(['message' => 'Password change required.'], 403);
-                }
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Password change required.'], 403);
+            }
 
-                return redirect()->route('password.change');
-            }
-        } elseif ($user && ! $user->need_password_change) {
-            if ($request->routeIs('password.change', 'password.change.update')) {
-                return redirect()->route('home');
-            }
+            return redirect()->route('password.change');
         }
 
         return $next($request);

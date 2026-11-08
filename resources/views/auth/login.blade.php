@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Login</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -109,18 +107,16 @@
                                 autofocus
                                 >
                         </div>
+                        @error('email_or_username')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <!-- Password Field -->
                     <div class="mb-6">
-{{--                        <div class="flex justify-between items-center mb-2">--}}
-{{--                            <label for="password" class="block text-sm font-semibold text-gray-700">--}}
-{{--                                <i class="fas fa-key mr-2 text-blue-500"></i>Password--}}
-{{--                            </label>--}}
-{{--                            <a href="#" class="text-sm text-blue-600 hover:text-blue-800 transition duration-200">--}}
-{{--                                Forgot Password?--}}
-{{--                            </a>--}}
-{{--                        </div>--}}
+                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-key mr-2 text-blue-500"></i>Password
+                        </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i class="fas fa-lock text-blue-400"></i>
@@ -137,6 +133,9 @@
                                 <i class="fas fa-eye text-blue-400 hover:text-blue-600 transition duration-200" id="eyeIcon"></i>
                             </button>
                         </div>
+                        @error('password')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="relative text-red-700">
                         @error('error')

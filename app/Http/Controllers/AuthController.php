@@ -61,6 +61,10 @@ class AuthController extends Controller
 
     public function updatePassword(Request $request): RedirectResponse
     {
+        if (! $request->user()?->need_password_change) {
+            return redirect()->route('home');
+        }
+
         $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);

@@ -92,7 +92,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @foreach ($roles as $role)
                                 @php
-                                    $roleName = is_object($role) ? $role->name : $role;
+                                    $roleName = $role;
                                     $isChecked = ($currentRole === $roleName);
                                     $description = $roleDescriptions[$roleName] ?? "Assigned as {$roleName} with corresponding system permissions.";
                                     $accentColor = $roleName === 'Admin' ? 'text-purple-600 focus:ring-purple-500' : 'text-blue-600 focus:ring-blue-500';
@@ -157,9 +157,11 @@
     <script>
         function generatePassword() {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
+            const randomValues = new Uint32Array(10);
+            window.crypto.getRandomValues(randomValues);
             let pass = '';
             for (let i = 0; i < 10; i++) {
-                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                pass += chars.charAt(randomValues[i] % chars.length);
             }
             document.getElementById('password').value = pass;
             document.getElementById('password_confirmation').value = pass;

@@ -13,55 +13,57 @@ Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('loginPost');
 
-Route::middleware(['auth', 'tenant', 'password.changed'])->group(function () {
+Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/password/change', [AuthController::class, 'showChangePassword'])->name('password.change');
     Route::post('/password/change', [AuthController::class, 'updatePassword'])->name('password.change.update');
 
-    Route::get('/', function () {
-        return view('welcome');
-    })->name('home');
+    Route::middleware('password.changed')->group(function () {
+        Route::get('/', function () {
+            return view('welcome');
+        })->name('home');
 
-    Route::get('/dashboard', DashBoardController::class)
-        ->middleware('role:Admin')
-        ->name('dashboard');
+        Route::get('/dashboard', DashBoardController::class)
+            ->middleware('role:Admin')
+            ->name('dashboard');
 
-    Route::prefix('items')->name('items.')->group(function () {
-        Route::get('/index', [ItemController::class, 'index'])->name('index');
-        Route::get('/create', [ItemController::class, 'create'])->name('create');
-        Route::post('/items', [ItemController::class, 'store'])->name('store');
-        Route::get('/show/{item}', [ItemController::class, 'show'])->name('show');
+        Route::prefix('items')->name('items.')->group(function () {
+            Route::get('/index', [ItemController::class, 'index'])->name('index');
+            Route::get('/create', [ItemController::class, 'create'])->name('create');
+            Route::post('/items', [ItemController::class, 'store'])->name('store');
+            Route::get('/show/{item}', [ItemController::class, 'show'])->name('show');
 
-        Route::middleware('role:Admin')->group(function () {
-            Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
-            Route::put('/{item}', [ItemController::class, 'update'])->name('update');
-            Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
-            Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+            Route::middleware('role:Admin')->group(function () {
+                Route::get('/edit/{item}', [ItemController::class, 'edit'])->name('edit');
+                Route::put('/{item}', [ItemController::class, 'update'])->name('update');
+                Route::delete('/delete/{item}', [ItemController::class, 'delete'])->name('delete');
+                Route::post('/restore/{item}', [ItemController::class, 'restore'])->name('restore');
+            });
         });
-    });
 
-    Route::prefix('orders')->name('orders.')->group(function () {
-        Route::get('/index', [OrderController::class, 'index'])->name('index');
-        Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('search-customers');
-        Route::post('/quick-customer', [OrderController::class, 'quickStoreCustomer'])->name('quick-customer');
-        Route::get('/create', [OrderController::class, 'create'])->name('create');
-        Route::post('/orders', [OrderController::class, 'store'])->name('store');
+        Route::prefix('orders')->name('orders.')->group(function () {
+            Route::get('/index', [OrderController::class, 'index'])->name('index');
+            Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('search-customers');
+            Route::post('/quick-customer', [OrderController::class, 'quickStoreCustomer'])->name('quick-customer');
+            Route::get('/create', [OrderController::class, 'create'])->name('create');
+            Route::post('/orders', [OrderController::class, 'store'])->name('store');
 
-        Route::middleware('role:Admin')->group(function () {
-            Route::get('/edit/{order}', [OrderController::class, 'edit'])->name('edit');
-            Route::put('/update/{order}', [OrderController::class, 'update'])->name('update');
-            Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
+            Route::middleware('role:Admin')->group(function () {
+                Route::get('/edit/{order}', [OrderController::class, 'edit'])->name('edit');
+                Route::put('/update/{order}', [OrderController::class, 'update'])->name('update');
+                Route::delete('delete/{order}', [OrderController::class, 'delete'])->name('delete');
+            });
         });
-    });
 
-    Route::middleware('role:Admin')->prefix('employees')->name('employees.')->group(function () {
-        Route::get('/', [EmployeeController::class, 'index'])->name('index');
-        Route::get('/create', [EmployeeController::class, 'create'])->name('create');
-        Route::post('/', [EmployeeController::class, 'store'])->name('store');
-        Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
-        Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
-        Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+        Route::middleware('role:Admin')->prefix('employees')->name('employees.')->group(function () {
+            Route::get('/', [EmployeeController::class, 'index'])->name('index');
+            Route::get('/create', [EmployeeController::class, 'create'])->name('create');
+            Route::post('/', [EmployeeController::class, 'store'])->name('store');
+            Route::get('/{employee}/edit', [EmployeeController::class, 'edit'])->name('edit');
+            Route::put('/{employee}', [EmployeeController::class, 'update'])->name('update');
+            Route::delete('/{employee}', [EmployeeController::class, 'destroy'])->name('destroy');
+        });
     });
 });
 

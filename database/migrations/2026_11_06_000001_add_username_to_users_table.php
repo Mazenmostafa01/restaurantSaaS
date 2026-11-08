@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('username')->nullable()->unique()->after('name');
             $table->string('email')->nullable()->change();
-            $table->boolean('need_password_change')->nullable()->default(true);
+            $table->boolean('need_password_change')->default(false);
         });
     }
 
