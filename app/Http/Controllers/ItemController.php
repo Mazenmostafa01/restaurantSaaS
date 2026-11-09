@@ -22,12 +22,14 @@ class ItemController extends Controller
     {
         $query = Item::withTrashed()->with('attachments');
 
-        if ($term = trim((string) $request->input('q', ''))) {
+        $rawTerm = $request->input('q');
+        if (is_string($rawTerm) && ($term = trim($rawTerm)) !== '') {
             $query->where('name', 'like', "{$term}%");
         }
 
-        if ($category = $request->input('category')) {
-            $query->where('category', $category);
+        $rawCategory = $request->input('category');
+        if (is_string($rawCategory) && $rawCategory !== '') {
+            $query->where('category', $rawCategory);
         }
 
         $items = $query->orderBy('category')->orderBy('name')->paginate(15)->withQueryString();

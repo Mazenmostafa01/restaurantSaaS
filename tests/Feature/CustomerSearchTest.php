@@ -136,4 +136,43 @@ class CustomerSearchTest extends TestCase
         $phoneResponse->assertJsonCount(1, 'customers');
         $this->assertSame('Ahmed Hassan', $phoneResponse->json('customers.0.name'));
     }
+
+    public function test_customer_search_handles_empty_query_and_wildcard_without_cross_tenant_leak(): void
+    {
+        Customer::create([
+            'restaurant_id' => $this->restaurant1->id,
+            'name' => 'Customer A1',
+            'phone_number' => '01011111111',
+            'address' => 'Burger Lane',
+        ]);
+
+        Customer::create([
+            'restaurant_id' => $this->restaurant2->id,
+            'name' => 'Customer B1',
+            'phone_number' => '01022222222',
+            'address' => 'Pizza Boulevard',
+        ]);
+
+        $responseEmpty = $this->actingAs($this->admin1, 'web')
+            ->getJson(route('orders.search-customers', ['q' => '']));
+
+        $responseEmpty->assertOk();
+        $emptyPhones = collect($responseEmpty->json('customers'))->pluck('phone_number')->all();
+        $this->assertContains('01011111111', $emptyPhones);
+        $this->assertNotContains('01022222222', $emptyPhones, 'Empty search must not leak other tenants');
+
+        $responseWildcard = $this->actingAs($this->admin1, 'web')
+            ->getJson(route('orders.search-customers', ['q' => '%']));
+
+        $responseWildcard->assertOk();
+        $wildcardPhones = collect($responseWildcard->json('customers'))->pluck('phone_number')->all();
+        $this->assertContains('01011111111', $wildcardPhones);
+        $this->assertNotContains('01022222222', $wildcardPhones, 'Wildcard search must not leak other tenants');
+    }
+
+    public function test_unauthenticated_request_cannot_search_customers(): void
+    {
+        $this->getJson(route('orders.search-customers', ['q' => '010']))
+            ->assertStatus(401);
+    }
 }

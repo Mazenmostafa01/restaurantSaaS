@@ -10,9 +10,11 @@ use App\Models\Restaurant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -391,5 +393,231 @@ class CustomerOrderParseTest extends TestCase
 
         $response->assertStatus(503);
         $response->assertJsonStructure(['message']);
+    }
+
+    public function test_parses_multimodal_request_when_both_text_and_audio_are_provided(): void
+    {
+        $burger = Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Spicy Burger',
+            'price' => 110.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake([
+            [
+                'matched_items' => [
+                    [
+                        'id' => $burger->id,
+                        'name' => 'Spicy Burger',
+                        'quantity' => 1,
+                        'note' => 'extra spicy',
+                        'person' => null,
+                        'confidence' => 0.98,
+                    ],
+                ],
+                'unmatched_items' => [],
+                'notes' => [],
+                'splits' => [],
+                'language_detected' => 'en',
+            ],
+        ]);
+
+        Sanctum::actingAs($this->customer, ['*']);
+
+        $audioFile = UploadedFile::fake()->create('voice.webm', 200, 'audio/webm');
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => 'Make sure it is extra spicy please',
+            'audio' => $audioFile,
+            'preferred_language' => 'en',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'subtotal' => '110.00',
+            'tax' => '15.40',
+            'net' => '125.40',
+            'items' => [
+                [
+                    'id' => $burger->id,
+                    'name' => 'Spicy Burger',
+                    'quantity' => 1,
+                    'price' => '110.00',
+                    'subtotal' => '110.00',
+                ],
+            ],
+        ]);
+
+        OrderParserAgent::assertPrompted(function (AgentPrompt $prompt) {
+            return $prompt->contains('Make sure it is extra spicy please')
+                && $prompt->attachments->isNotEmpty()
+                && $prompt->agent->restaurantName === 'Burger House';
+        });
+    }
+
+    public function test_cross_tenant_and_unknown_item_injection_in_ai_output_is_demoted_to_unmatched(): void
+    {
+        $otherRestaurant = Restaurant::create([
+            'name' => 'Sushi Bar',
+            'slug' => 'sushi-bar',
+            'email' => 'sushi@bar.com',
+            'is_active' => true,
+        ]);
+
+        $burger = Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Valid Burger',
+            'price' => 100.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        $sushi = Item::create([
+            'restaurant_id' => $otherRestaurant->id,
+            'name' => 'Injected Sushi Roll',
+            'price' => 300.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake([
+            [
+                'matched_items' => [
+                    [
+                        'id' => $burger->id,
+                        'name' => 'Valid Burger',
+                        'quantity' => 2,
+                        'confidence' => 0.95,
+                    ],
+                    [
+                        'id' => $sushi->id,
+                        'name' => 'Injected Sushi Roll',
+                        'quantity' => 1,
+                        'confidence' => 0.99,
+                    ],
+                    [
+                        'id' => 999999,
+                        'name' => 'Non Existent Caviar',
+                        'quantity' => 1,
+                        'confidence' => 0.99,
+                    ],
+                ],
+                'unmatched_items' => [],
+                'notes' => [],
+                'splits' => [],
+                'language_detected' => 'en',
+            ],
+        ]);
+
+        Sanctum::actingAs($this->customer, ['*']);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => '2 burgers, 1 sushi roll, 1 caviar',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'subtotal' => '200.00',
+            'tax' => '28.00',
+            'net' => '228.00',
+            'items' => [
+                [
+                    'id' => $burger->id,
+                    'name' => 'Valid Burger',
+                    'quantity' => 2,
+                    'price' => '100.00',
+                    'subtotal' => '200.00',
+                ],
+            ],
+            'unmatched' => [
+                [
+                    'raw_text' => 'Injected Sushi Roll',
+                    'reason' => 'not_on_menu',
+                ],
+                [
+                    'raw_text' => 'Non Existent Caviar',
+                    'reason' => 'not_on_menu',
+                ],
+            ],
+        ]);
+
+        $response->assertJsonMissing([
+            'items' => [
+                ['id' => $sushi->id],
+            ],
+        ]);
+    }
+
+    public function test_postman_cross_tenant_token_tampering_is_rejected_without_prompting_ai(): void
+    {
+        $otherRestaurant = Restaurant::create([
+            'name' => 'Pizza Corner',
+            'slug' => 'pizza-corner',
+            'email' => 'info@pizzacorner.com',
+            'is_active' => true,
+        ]);
+
+        $otherCustomer = Customer::create([
+            'restaurant_id' => $otherRestaurant->id,
+            'name' => 'Attacker Diner',
+            'email' => 'attacker@example.com',
+            'phone_number' => '01099998888',
+            'password' => bcrypt('password123'),
+        ]);
+
+        OrderParserAgent::fake();
+
+        Sanctum::actingAs($otherCustomer, ['*']);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => '2 burgers',
+        ]);
+
+        $response->assertUnauthorized();
+        $response->assertJson(['message' => 'Unauthenticated.']);
+
+        OrderParserAgent::assertNeverPrompted();
+    }
+
+    public function test_postman_payload_validation_rejects_text_exceeding_2000_characters(): void
+    {
+        Sanctum::actingAs($this->customer, ['*']);
+        OrderParserAgent::fake();
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => str_repeat('A', 2001),
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['text']);
+
+        OrderParserAgent::assertNeverPrompted();
+    }
+
+    public function test_handles_unexpected_generic_exception_with_500_json_and_reports_it(): void
+    {
+        Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Burger',
+            'price' => 100.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake(function () {
+            throw new \RuntimeException('Unexpected AI provider kernel crash');
+        });
+
+        Exceptions::fake();
+        Sanctum::actingAs($this->customer, ['*']);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/orders/parse", [
+            'text' => '1 burger',
+        ]);
+
+        $response->assertStatus(500);
+        $response->assertJson([
+            'message' => 'Could not parse your order right now. Please try again later.',
+        ]);
+
+        Exceptions::assertReported(\RuntimeException::class);
     }
 }

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customer;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -290,7 +292,7 @@ class AdminEmployeeManagementTest extends TestCase
             'role' => 'Employee',
         ]);
 
-        $response->assertSessionHasErrors(['role']);
+        $response->assertSessionHasErrors(['role' => 'You cannot remove your own Admin role.']);
         $this->adminA->refresh();
         $this->assertTrue($this->adminA->hasRole('Admin'));
     }
@@ -495,5 +497,47 @@ class AdminEmployeeManagementTest extends TestCase
 
         // Visiting password.change now redirects to home
         $this->actingAs($user)->get(route('password.change'))->assertRedirect(route('home'));
+    }
+
+    public function test_admin_cannot_mass_assign_restaurant_id_when_creating_employee(): void
+    {
+        $response = $this->actingAs($this->adminA)->post(route('employees.store'), [
+            'name' => 'Trojan Horse',
+            'username' => 'trojan_user',
+            'email' => 'trojan@burgerbarn.com',
+            'role' => 'Employee',
+            'password' => 'secretPassword123',
+            'password_confirmation' => 'secretPassword123',
+            'restaurant_id' => $this->restaurantB->id,
+        ]);
+
+        $response->assertRedirect(route('employees.index'));
+
+        $createdUser = User::withoutGlobalScopes()->where('username', 'trojan_user')->first();
+        $this->assertNotNull($createdUser);
+        $this->assertSame($this->restaurantA->id, $createdUser->restaurant_id, 'restaurant_id must be stamped to active tenant, not attacker input');
+    }
+
+    public function test_authenticated_customer_from_tenant_a_cannot_access_tenant_b_profile_or_orders(): void
+    {
+        $customerA = Customer::create([
+            'restaurant_id' => $this->restaurantA->id,
+            'name' => 'Customer A',
+            'email' => 'customer_a@pizzapalace.com',
+            'phone_number' => '01011113333',
+            'password' => Hash::make('password123'),
+        ]);
+
+        Sanctum::actingAs($customerA, ['*']);
+
+        $this->getJson("/api/customer/{$this->restaurantB->slug}/profile")
+            ->assertStatus(401);
+
+        $this->putJson("/api/customer/{$this->restaurantB->slug}/profile", [
+            'name' => 'Hacked Profile Name',
+        ])->assertStatus(401);
+
+        $this->getJson("/api/customer/{$this->restaurantB->slug}/orders")
+            ->assertStatus(401);
     }
 }

@@ -10,6 +10,7 @@ use App\DTOs\ParseMetadata;
 use App\DTOs\ParsePricing;
 use App\Http\Resources\ParsedOrderResource;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -211,5 +212,38 @@ class ParsedOrderDtoTest extends TestCase
         $this->assertArrayHasKey('splits', $array);
         $this->assertArrayNotHasKey('confidence_score', $array);
         $this->assertArrayNotHasKey('processing_duration_ms', $array);
+    }
+
+    public function test_order_parse_data_dto_validation_boundaries(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Either text or audio must be provided for order parsing.');
+
+        new OrderParseData(text: null, audio: null);
+    }
+
+    public function test_audio_payload_dto_validation_boundaries(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Audio payload requires either an UploadedFile or a base64 string.');
+
+        new AudioPayload(file: null, base64: null);
+    }
+
+    public function test_order_parse_data_from_customer_request_with_both_text_and_audio(): void
+    {
+        $audioFile = UploadedFile::fake()->create('voice.webm', 100, 'audio/webm');
+        $request = Request::create('/api/orders/parse', 'POST', [
+            'text' => 'Extra onions please',
+            'preferred_language' => 'en',
+        ], files: [
+            'audio' => $audioFile,
+        ]);
+
+        $dto = OrderParseData::fromCustomerRequest($request);
+
+        $this->assertSame('Extra onions please', $dto->text);
+        $this->assertTrue($dto->hasAudio());
+        $this->assertSame('audio/webm', $dto->audio->mimeType);
     }
 }

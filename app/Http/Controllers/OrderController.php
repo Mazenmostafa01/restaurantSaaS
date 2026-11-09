@@ -36,7 +36,8 @@ class OrderController extends Controller
 
     public function searchCustomers(Request $request): JsonResponse
     {
-        $phone = trim((string) $request->input('q', ''));
+        $rawPhone = $request->input('q');
+        $phone = is_string($rawPhone) ? trim($rawPhone) : '';
 
         if ($phone === '') {
             $customers = Customer::select('id', 'name', 'phone_number', 'address')->latest('id')->limit(15)->get();
@@ -144,7 +145,8 @@ class OrderController extends Controller
 
     private function applyOrderFilters(Builder $query, Request $request): void
     {
-        if ($searchTerm = trim((string) $request->input('q', ''))) {
+        $rawSearch = $request->input('q');
+        if (is_string($rawSearch) && ($searchTerm = trim($rawSearch)) !== '') {
             $cleanSearch = ltrim($searchTerm, '#');
             $query->where(function (Builder $q) use ($cleanSearch, $searchTerm): void {
                 $q->where('order_number', 'like', "{$cleanSearch}%")
@@ -154,8 +156,9 @@ class OrderController extends Controller
             });
         }
 
-        if ($type = $request->input('type')) {
-            $query->where('type', $type);
+        $rawType = $request->input('type');
+        if (is_string($rawType) && $rawType !== '') {
+            $query->where('type', $rawType);
         }
     }
 

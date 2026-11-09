@@ -181,4 +181,110 @@ class ShadowCustomerTest extends TestCase
         ]);
         $duplicateResponse->assertStatus(422);
     }
+
+    public function test_cannot_claim_shadow_customer_belonging_to_another_tenant(): void
+    {
+        $shadowCustomerB = Customer::create([
+            'restaurant_id' => $this->restaurant2->id,
+            'name' => 'Tenant B Phone Caller',
+            'phone_number' => '01088887777',
+            'address' => '456 Barn Road',
+            'password' => null,
+            'email' => null,
+        ]);
+
+        $orderB = Order::create([
+            'restaurant_id' => $this->restaurant2->id,
+            'customer_id' => $shadowCustomerB->id,
+            'user_id' => $this->admin2->id,
+            'order_number' => 'ORD-BB-001',
+            'price' => 150.00,
+            'tax' => 21.00,
+            'net' => 171.00,
+            'type' => 'delivery',
+        ]);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant1->slug}/register", [
+            'name' => 'Tenant A Hijacker',
+            'email' => 'hijacker@burgercentral.com',
+            'phone_number' => '01088887777',
+            'password' => 'secretPassword123',
+            'password_confirmation' => 'secretPassword123',
+            'address' => '789 Imposter Ave',
+        ]);
+
+        $response->assertStatus(201);
+        $newCustomerIdA = $response->json('customer.id');
+
+        $this->assertNotSame($shadowCustomerB->id, $newCustomerIdA);
+
+        $shadowCustomerB->refresh();
+        $this->assertSame($this->restaurant2->id, $shadowCustomerB->restaurant_id);
+        $this->assertNull($shadowCustomerB->email);
+        $this->assertNull($shadowCustomerB->password);
+        $this->assertSame('Tenant B Phone Caller', $shadowCustomerB->name);
+
+        $this->assertSame($shadowCustomerB->id, $orderB->fresh()->customer_id);
+    }
+
+    public function test_cannot_claim_shadow_customer_with_conflicting_email(): void
+    {
+        Customer::create([
+            'restaurant_id' => $this->restaurant1->id,
+            'name' => 'Existing Customer',
+            'email' => 'taken@burgercentral.com',
+            'phone_number' => '01011110000',
+            'password' => bcrypt('password123'),
+            'address' => '123 Main St',
+        ]);
+
+        Customer::create([
+            'restaurant_id' => $this->restaurant1->id,
+            'name' => 'Shadow Customer',
+            'phone_number' => '01099992222',
+            'address' => '456 Oak St',
+            'email' => null,
+            'password' => null,
+        ]);
+
+        $response = $this->postJson("/api/customer/{$this->restaurant1->slug}/register", [
+            'name' => 'Imposter Claim',
+            'email' => 'taken@burgercentral.com',
+            'phone_number' => '01099992222',
+            'password' => 'secretPassword123',
+            'password_confirmation' => 'secretPassword123',
+            'address' => '456 Oak St',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'message' => 'A customer with this email or phone already exists at this restaurant.',
+        ]);
+    }
+
+    public function test_quick_customer_rejects_malicious_or_invalid_phone_formats(): void
+    {
+        $this->actingAs($this->admin1, 'web')
+            ->postJson(route('orders.quick-customer'), [
+                'name' => 'Array Phone Caller',
+                'phone_number' => ['01012345678'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['phone_number']);
+
+        $this->actingAs($this->admin1, 'web')
+            ->postJson(route('orders.quick-customer'), [
+                'name' => 'Oversized Phone Caller',
+                'phone_number' => str_repeat('9', 25),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['phone_number']);
+
+        $this->actingAs($this->admin1, 'web')
+            ->postJson(route('orders.quick-customer'), [
+                'phone_number' => '01012349999',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['name']);
+    }
 }

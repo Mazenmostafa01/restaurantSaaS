@@ -146,15 +146,85 @@ class CustomerAuthRateLimitingTest extends TestCase
     public function test_staff_web_login_rate_limiting_triggers_after_five_attempts(): void
     {
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/login', [
-                'email' => 'admin@restaurant.com',
+            $this->from('/login')->post('/login', [
+                'email_or_username' => 'admin@restaurant.com',
                 'password' => 'wrongpassword',
-            ])->assertStatus(302);
+            ])->assertRedirect('/login')
+                ->assertSessionHasErrors(['error' => 'wrong username or password']);
         }
 
-        $this->post('/login', [
-            'email' => 'admin@restaurant.com',
+        $this->from('/login')->post('/login', [
+            'email_or_username' => 'admin@restaurant.com',
             'password' => 'wrongpassword',
         ])->assertStatus(429);
+    }
+
+    public function test_login_rate_limiting_is_isolated_per_tenant(): void
+    {
+        $email = 'shared_diner@test.com';
+        $headers = ['Referer' => 'http://localhost', 'Accept' => 'application/json'];
+
+        $restaurantB = Restaurant::create([
+            'name' => 'Second Restaurant',
+            'slug' => 'second-restaurant',
+            'email' => 'second@restaurant.com',
+            'phone' => '0987654321',
+            'address' => '456 Second St',
+            'is_active' => true,
+        ]);
+
+        Customer::create([
+            'restaurant_id' => $restaurantB->id,
+            'name' => 'Shared Diner',
+            'email' => $email,
+            'phone_number' => '01055551111',
+            'password' => 'correctPassword123',
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withSession([])->postJson("/api/customer/{$this->restaurant->slug}/login", [
+                'email' => $email,
+                'password' => 'wrongPassword',
+            ], $headers)->assertStatus(401);
+        }
+
+        $this->withSession([])->postJson("/api/customer/{$this->restaurant->slug}/login", [
+            'email' => $email,
+            'password' => 'wrongPassword',
+        ], $headers)->assertStatus(429);
+
+        $tenantBResponse = $this->withSession([])->postJson("/api/customer/{$restaurantB->slug}/login", [
+            'email' => $email,
+            'password' => 'correctPassword123',
+        ], $headers);
+
+        $tenantBResponse->assertStatus(200);
+        $this->assertArrayHasKey('token', $tenantBResponse->json());
+    }
+
+    public function test_registration_rejects_nested_array_payload_for_string_fields(): void
+    {
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/register", [
+            'name' => ['malicious' => 'nested array'],
+            'email' => ['injected@email.com'],
+            'phone_number' => ['01012345678'],
+            'password' => ['password123'],
+            'password_confirmation' => ['password123'],
+            'address' => ['street' => 'nested address'],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['name', 'email', 'phone_number', 'password', 'address']);
+    }
+
+    public function test_customer_login_rejects_nested_array_payload(): void
+    {
+        $response = $this->postJson("/api/customer/{$this->restaurant->slug}/login", [
+            'email' => ['admin@restaurant.com'],
+            'password' => ['password123'],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email', 'password']);
     }
 }

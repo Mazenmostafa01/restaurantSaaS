@@ -11,6 +11,7 @@ use App\Services\NaturalLanguageOrderParserService;
 use App\Services\TenantCacheService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\TestCase;
 
 class NaturalLanguageOrderParserServiceTest extends TestCase
@@ -579,5 +580,82 @@ class NaturalLanguageOrderParserServiceTest extends TestCase
         $this->assertSame(500.0, $result->subtotal());
         $this->assertSame(70.0, $result->tax());
         $this->assertSame(570.0, $result->netTotal());
+    }
+
+    public function test_agent_prompt_includes_tenant_restaurant_name_and_preferred_language(): void
+    {
+        $burger = Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Burger',
+            'price' => 100.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake([
+            [
+                'matched_items' => [
+                    [
+                        'id' => $burger->id,
+                        'name' => 'Burger',
+                        'quantity' => 1,
+                        'confidence' => 0.95,
+                    ],
+                ],
+                'unmatched_items' => [],
+                'notes' => [],
+                'splits' => [],
+                'language_detected' => 'ar_eg',
+            ],
+        ]);
+
+        $data = new OrderParseData(
+            text: 'واحد برجر',
+            preferredLanguage: 'ar_eg'
+        );
+
+        $this->parserService->parse($data);
+
+        OrderParserAgent::assertPrompted(function (AgentPrompt $prompt) {
+            return $prompt->agent->restaurantName === 'Cairo Grill'
+                && ! empty($prompt->agent->menuDigest)
+                && $prompt->contains('واحد برجر')
+                && $prompt->contains('(Customer preferred language: ar_eg)');
+        });
+    }
+
+    public function test_normalizes_zero_and_negative_quantities_to_minimum_one(): void
+    {
+        $burger = Item::create([
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Cheeseburger',
+            'price' => 80.00,
+            'category' => ItemCategoryEnum::FOOD->value,
+        ]);
+
+        OrderParserAgent::fake([
+            [
+                'matched_items' => [
+                    [
+                        'id' => $burger->id,
+                        'name' => 'Cheeseburger',
+                        'quantity' => 0,
+                        'confidence' => 0.95,
+                    ],
+                ],
+                'unmatched_items' => [],
+                'notes' => [],
+                'splits' => [],
+                'language_detected' => 'en',
+            ],
+        ]);
+
+        $result = $this->parserService->parse(new OrderParseData(text: '1 cheeseburger'));
+
+        $this->assertCount(1, $result->matchedItems);
+        $this->assertSame(1, $result->matchedItems[0]['quantity']);
+        $this->assertSame(80.0, $result->matchedItems[0]['subtotal']);
+        $this->assertSame(80.0, $result->subtotal());
+        $this->assertSame(11.2, $result->tax());
+        $this->assertSame(91.2, $result->netTotal());
     }
 }

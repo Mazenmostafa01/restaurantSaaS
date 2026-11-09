@@ -21,15 +21,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by order # or customer phone..." 
+                <input type="text" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="Search by order # or customer phone..." 
                     class="block w-full rounded-xl border-0 py-2.5 pl-9 pr-3 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50" />
             </div>
 
             <div class="flex items-center gap-2">
                 <select name="type" class="rounded-xl border-0 py-2.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50">
                     <option value="">All Types</option>
-                    <option value="take_away" {{ request('type') === 'take_away' ? 'selected' : '' }}>Take Away</option>
-                    <option value="delivery" {{ request('type') === 'delivery' ? 'selected' : '' }}>Delivery</option>
+                    <option value="take_away" {{ is_string(request('type')) && request('type') === 'take_away' ? 'selected' : '' }}>Take Away</option>
+                    <option value="delivery" {{ is_string(request('type')) && request('type') === 'delivery' ? 'selected' : '' }}>Delivery</option>
                 </select>
 
                 <button type="submit" class="inline-flex items-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors">

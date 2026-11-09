@@ -21,7 +21,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Search items by name..." 
+                <input type="text" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="Search items by name..." 
                     class="block w-full rounded-xl border-0 py-2.5 pl-9 pr-3 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50" />
             </div>
 
@@ -30,7 +30,7 @@
                     <option value="">All Categories</option>
                     @foreach ($categories as $cat)
                         @php $val = is_object($cat) ? $cat->value : $cat; @endphp
-                        <option value="{{ $val }}" {{ request('category') === $val ? 'selected' : '' }}>
+                        <option value="{{ $val }}" {{ is_string(request('category')) && request('category') === $val ? 'selected' : '' }}>
                             {{ ucfirst($val) }}
                         </option>
                     @endforeach
