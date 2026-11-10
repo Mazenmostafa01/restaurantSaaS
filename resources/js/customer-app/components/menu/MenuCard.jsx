@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCart, MAX_ITEM_QUANTITY } from '../../context/CartContext';
 
 export default function MenuCard({ item, onCardClick }) {
     const { addItem, updateQuantity, getItemQuantity } = useCart();
@@ -19,6 +19,7 @@ export default function MenuCard({ item, onCardClick }) {
 
     const handleIncrement = (e) => {
         e.stopPropagation();
+        if (currentQty >= MAX_ITEM_QUANTITY) return;
         updateQuantity(item.id, currentQty + 1);
     };
 
@@ -91,7 +92,9 @@ export default function MenuCard({ item, onCardClick }) {
                                     type="button"
                                     className="card-stepper-btn"
                                     onClick={handleIncrement}
+                                    disabled={currentQty >= MAX_ITEM_QUANTITY}
                                     aria-label={`Add another ${item.name}`}
+                                    title={currentQty >= MAX_ITEM_QUANTITY ? `Maximum limit of ${MAX_ITEM_QUANTITY} per item reached` : `Add another ${item.name}`}
                                 >
                                     +
                                 </button>

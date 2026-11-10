@@ -1,5 +1,6 @@
 import React, { useId } from "react";
 import { useNavigate } from "react-router-dom";
+import { MAX_ITEM_QUANTITY } from "../../context/CartContext";
 import GroupBillSplitCard from "./GroupBillSplitCard";
 
 export default function AiOrderReview({
@@ -123,7 +124,9 @@ export default function AiOrderReview({
                                                     dish.quantity + 1,
                                                 )
                                             }
+                                            disabled={dish.quantity >= MAX_ITEM_QUANTITY}
                                             aria-label={`Increase ${dish.name}`}
+                                            title={dish.quantity >= MAX_ITEM_QUANTITY ? `Maximum limit of ${MAX_ITEM_QUANTITY} per item reached` : `Increase ${dish.name}`}
                                         >
                                             +
                                         </button>

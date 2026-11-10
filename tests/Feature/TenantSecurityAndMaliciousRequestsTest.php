@@ -275,6 +275,34 @@ class TenantSecurityAndMaliciousRequestsTest extends TestCase
             ->assertJsonValidationErrors(['items.0.id']);
     }
 
+    public function test_customer_order_creation_enforces_limit_of_ten_per_item(): void
+    {
+        $token = $this->customerA->createToken($this->restaurantA->slug)->plainTextToken;
+        $headers = ['Authorization' => 'Bearer '.$token];
+
+        // Quantity > 10 is rejected
+        $this->postJson("/api/customer/{$this->restaurantA->slug}/orders", [
+            'type' => 'take_away',
+            'items' => [
+                ['id' => $this->itemA->id, 'quantity' => 11],
+            ],
+        ], $headers)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.quantity'])
+            ->assertJsonFragment([
+                'items.0.quantity' => ['You cannot order more than 10 of any item.'],
+            ]);
+
+        // Quantity = 10 is accepted
+        $this->postJson("/api/customer/{$this->restaurantA->slug}/orders", [
+            'type' => 'take_away',
+            'items' => [
+                ['id' => $this->itemA->id, 'quantity' => 10],
+            ],
+        ], $headers)
+            ->assertStatus(201);
+    }
+
     public function test_cross_tenant_item_restore_route_returns_404_not_found(): void
     {
         $trashedItemB = Item::withoutGlobalScopes()->create([

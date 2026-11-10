@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
+import { useCart, MAX_ITEM_QUANTITY } from "../../context/CartContext";
 import { useRestaurant } from "../../context/RestaurantContext";
 import { useVoiceRecorder } from "../../hooks/useVoiceRecorder";
 import NativeModal from "../common/NativeModal";
@@ -20,7 +20,10 @@ function hydrateMatchedDishes(parsedItems, menuItemsById) {
             name: parsedDish.name || fullMenuDish?.name || "Dish",
             price: priceRaw.toFixed(2),
             price_raw: priceRaw,
-            quantity: Math.max(1, Number(parsedDish.quantity || 1)),
+            quantity: Math.min(
+                MAX_ITEM_QUANTITY,
+                Math.max(1, Number(parsedDish.quantity || 1)),
+            ),
             ai_note: parsedDish.note || null,
             image: fullMenuDish?.image || null,
             images: fullMenuDish?.images || [],
@@ -159,7 +162,10 @@ export default function AiOrderModal({ isOpen, onClose, allItems = [] }) {
         setReviewItems((prev) =>
             prev.map((reviewDish) =>
                 reviewDish.id === dishId
-                    ? { ...reviewDish, quantity: Math.min(99, nextQuantity) }
+                    ? {
+                          ...reviewDish,
+                          quantity: Math.min(MAX_ITEM_QUANTITY, nextQuantity),
+                      }
                     : reviewDish,
             ),
         );
@@ -186,7 +192,13 @@ export default function AiOrderModal({ isOpen, onClose, allItems = [] }) {
             if (existing) {
                 return prev.map((reviewDish) =>
                     reviewDish.id === matchedMenuDish.id
-                        ? { ...reviewDish, quantity: reviewDish.quantity + 1 }
+                        ? {
+                              ...reviewDish,
+                              quantity: Math.min(
+                                  MAX_ITEM_QUANTITY,
+                                  reviewDish.quantity + 1,
+                              ),
+                          }
                         : reviewDish,
                 );
             }

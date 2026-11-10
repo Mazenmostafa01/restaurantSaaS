@@ -1,10 +1,11 @@
 import React from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCart, MAX_ITEM_QUANTITY } from '../../context/CartContext';
 
 export default function CartItem({ item }) {
     const { updateQuantity, removeItem } = useCart();
     const itemTotal = (item.price_raw * item.quantity).toFixed(2);
     const thumb = (Array.isArray(item.images) && item.images[0]) || item.image;
+    const isMax = item.quantity >= MAX_ITEM_QUANTITY;
 
     return (
         <div className="cart-item">
@@ -23,6 +24,11 @@ export default function CartItem({ item }) {
                     <span className="cart-item-price">
                         {itemTotal} EGP <span style={{ fontSize: '11px', color: 'var(--c-text-subtle)', fontWeight: 400 }}>({item.price} ea)</span>
                     </span>
+                    {isMax && (
+                        <span className="cart-item-limit-pill">
+                            Max limit ({MAX_ITEM_QUANTITY})
+                        </span>
+                    )}
                     {item.ai_note && (
                         <span className="ai-item-note-pill" dir="auto">
                             📝 {item.ai_note}
@@ -44,7 +50,9 @@ export default function CartItem({ item }) {
                     type="button"
                     className="cart-qty-btn"
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    disabled={isMax}
                     aria-label="Increase quantity"
+                    title={isMax ? `Maximum limit of ${MAX_ITEM_QUANTITY} reached` : 'Increase quantity'}
                 >
                     +
                 </button>

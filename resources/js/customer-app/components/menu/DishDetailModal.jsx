@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useCart, MAX_ITEM_QUANTITY } from '../../context/CartContext';
 
 export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) {
+    const { getItemQuantity } = useCart();
     const [quantity, setQuantity] = useState(1);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    const currentInCart = item ? getItemQuantity(item.id) : 0;
+    const maxCanAdd = Math.max(0, MAX_ITEM_QUANTITY - currentInCart);
+    const isMaxReached = maxCanAdd === 0;
 
     const images = item
         ? (Array.isArray(item.images) && item.images.length > 0
@@ -12,7 +18,7 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
 
     useEffect(() => {
         if (isOpen) {
-            setQuantity(1);
+            setQuantity(maxCanAdd > 0 ? 1 : 0);
             setActiveImageIndex(0);
             document.body.style.overflow = 'hidden';
         } else {
@@ -21,12 +27,12 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
         return () => {
             document.body.style.overflow = '';
         };
-    }, [isOpen, item]);
+    }, [isOpen, item, maxCanAdd]);
 
     if (!isOpen || !item) return null;
 
-    const handleIncrement = () => setQuantity((q) => Math.min(99, q + 1));
-    const handleDecrement = () => setQuantity((q) => Math.max(1, q - 1));
+    const handleIncrement = () => setQuantity((q) => Math.min(maxCanAdd, q + 1));
+    const handleDecrement = () => setQuantity((q) => Math.max(maxCanAdd > 0 ? 1 : 0, q - 1));
 
     const handlePrevImage = (e) => {
         e.stopPropagation();
@@ -39,6 +45,7 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
     };
 
     const handleAdd = () => {
+        if (quantity <= 0 || isMaxReached) return;
         onAddToCart(item, quantity);
         onClose();
     };
@@ -146,13 +153,21 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
                         <p className="dish-modal-desc">{item.description}</p>
                     )}
 
+                    {currentInCart > 0 && (
+                        <div className="dish-modal-limit-hint">
+                            {isMaxReached
+                                ? `Maximum limit of ${MAX_ITEM_QUANTITY} reached (${currentInCart} in your cart).`
+                                : `${currentInCart} already in your cart (maximum limit is ${MAX_ITEM_QUANTITY} per item).`}
+                        </div>
+                    )}
+
                     <div className="dish-modal-controls">
                         <div className="modal-stepper">
                             <button
                                 type="button"
                                 className="modal-stepper-btn"
                                 onClick={handleDecrement}
-                                disabled={quantity <= 1}
+                                disabled={quantity <= (maxCanAdd > 0 ? 1 : 0)}
                                 aria-label="Decrease quantity"
                             >
                                 −
@@ -162,7 +177,9 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
                                 type="button"
                                 className="modal-stepper-btn"
                                 onClick={handleIncrement}
+                                disabled={quantity >= maxCanAdd}
                                 aria-label="Increase quantity"
+                                title={quantity >= maxCanAdd ? `Maximum limit of ${MAX_ITEM_QUANTITY} per item reached` : 'Increase quantity'}
                             >
                                 +
                             </button>
@@ -172,9 +189,14 @@ export default function DishDetailModal({ item, isOpen, onClose, onAddToCart }) 
                             type="button"
                             className="dish-modal-submit-btn"
                             onClick={handleAdd}
+                            disabled={isMaxReached || quantity <= 0}
                         >
-                            <span>Add to Order</span>
-                            <span>{calculatedSubtotal} EGP</span>
+                            <span>
+                                {isMaxReached
+                                    ? `Limit Reached (${MAX_ITEM_QUANTITY} in cart)`
+                                    : 'Add to Order'}
+                            </span>
+                            <span>{isMaxReached ? '' : `${calculatedSubtotal} EGP`}</span>
                         </button>
                     </div>
                 </div>

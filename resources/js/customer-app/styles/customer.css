@@ -897,6 +897,16 @@ a:hover {
     background: var(--c-primary);
     color: #fff;
 }
+.card-stepper-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: transparent;
+    color: var(--c-text-muted);
+}
+.card-stepper-btn:disabled:hover {
+    background: transparent;
+    color: var(--c-text-muted);
+}
 
 .card-stepper-count {
     min-width: 20px;
@@ -1149,6 +1159,18 @@ a:hover {
     color: #fff;
     border-color: var(--c-primary);
 }
+.modal-stepper-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: var(--c-surface-card);
+    border-color: var(--c-border);
+    color: var(--c-text-muted);
+}
+.modal-stepper-btn:disabled:hover {
+    background: var(--c-surface-card);
+    border-color: var(--c-border);
+    color: var(--c-text-muted);
+}
 
 .modal-stepper-value {
     min-width: 28px;
@@ -1176,6 +1198,27 @@ a:hover {
 .dish-modal-submit-btn:hover {
     box-shadow: 0 6px 22px rgba(245, 158, 11, 0.5);
     transform: translateY(-1px);
+}
+.dish-modal-submit-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+.dish-modal-submit-btn:disabled:hover {
+    box-shadow: none;
+    transform: none;
+}
+
+.dish-modal-limit-hint {
+    margin-top: 10px;
+    padding: 6px 12px;
+    border-radius: var(--radius-xs);
+    background: var(--c-primary-subtle);
+    border: 1px solid var(--c-border-accent);
+    color: var(--c-primary);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 /* ── Cart Page ─────────────────────────────────────────────────────────── */
@@ -1336,6 +1379,32 @@ a:hover {
 .cart-qty-btn:hover {
     border-color: var(--c-primary);
     background: var(--c-surface-hover);
+}
+.cart-qty-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: var(--c-border);
+    color: var(--c-text-muted);
+}
+.cart-qty-btn:disabled:hover {
+    border-color: var(--c-border);
+    background: var(--c-surface-elevated);
+    color: var(--c-text-muted);
+}
+
+.cart-item-limit-pill {
+    display: inline-block;
+    align-self: flex-start;
+    margin-top: 3px;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--c-primary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
 }
 
 .cart-qty-value {
@@ -2971,7 +3040,7 @@ dialog.ai-modal-dialog::backdrop {
 @property --progress-dash-animation {
     syntax: "*";
     inherits: false;
-    initial-value: , progress-dash 3s ease-in-out infinite;
+    initial-value: progress-dash 3s ease-in-out infinite;
 }
 
 progress.loading-spinner:indeterminate::-webkit-progress-bar,
@@ -3004,8 +3073,8 @@ progress.loading-spinner:indeterminate {
         )
         var(--track-color);
     animation:
-        progress-spin var(--_used-spinner-duration) linear infinite
-        var(--progress-dash-animation, );
+        progress-spin var(--_used-spinner-duration) linear infinite,
+        var(--progress-dash-animation, none);
 }
 
 @supports (background-clip: border-area) {

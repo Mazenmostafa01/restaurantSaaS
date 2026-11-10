@@ -32,7 +32,17 @@ class CustomerOrderStoreRequest extends FormRequest
                 'distinct',
                 $this->tenantExists('items', 'id', withoutTrashed: true),
             ],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:10'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'items.*.quantity.max' => 'You cannot order more than 10 of any item.',
         ];
     }
 }

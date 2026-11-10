@@ -6,6 +6,8 @@ import React, {
     useEffect,
 } from "react";
 
+export const MAX_ITEM_QUANTITY = 10;
+
 const CartContext = createContext(null);
 
 function getStorageKey(slug) {
@@ -19,7 +21,19 @@ function getMetaStorageKey(slug) {
 function loadCart(slug) {
     try {
         const serializedCart = localStorage.getItem(getStorageKey(slug));
-        return serializedCart ? JSON.parse(serializedCart) : [];
+        if (!serializedCart) {
+            return [];
+        }
+        const parsed = JSON.parse(serializedCart);
+        return Array.isArray(parsed)
+            ? parsed.map((item) => ({
+                  ...item,
+                  quantity: Math.min(
+                      MAX_ITEM_QUANTITY,
+                      Math.max(1, Number(item.quantity) || 1),
+                  ),
+              }))
+            : [];
     } catch {
         return [];
     }
@@ -72,11 +86,14 @@ function normalizeCartItem(dish, quantityToAdd) {
     const priceFormatted =
         typeof dish.price === "string" ? dish.price : priceRaw.toFixed(2);
 
+    const rawQty = Math.max(1, quantityToAdd || 1);
+    const clampedQty = Math.min(MAX_ITEM_QUANTITY, rawQty);
+
     return {
         ...dish,
         price: priceFormatted,
         price_raw: priceRaw,
-        quantity: Math.max(1, quantityToAdd || 1),
+        quantity: clampedQty,
         ai_note: dish.ai_note || null,
     };
 }
@@ -116,8 +133,10 @@ export function CartProvider({ children, slug }) {
                     cartItem.id === dish.id
                         ? {
                               ...cartItem,
-                              quantity:
+                              quantity: Math.min(
+                                  MAX_ITEM_QUANTITY,
                                   cartItem.quantity + normalized.quantity,
+                              ),
                               ai_note: mergeItemNote(
                                   cartItem.ai_note,
                                   normalized.ai_note,
@@ -147,8 +166,10 @@ export function CartProvider({ children, slug }) {
                             const existing = next[existingIdx];
                             next[existingIdx] = {
                                 ...existing,
-                                quantity:
+                                quantity: Math.min(
+                                    MAX_ITEM_QUANTITY,
                                     existing.quantity + normalized.quantity,
+                                ),
                                 ai_note: mergeItemNote(
                                     existing.ai_note,
                                     normalized.ai_note,
@@ -204,9 +225,12 @@ export function CartProvider({ children, slug }) {
             );
             return;
         }
+        const cappedQuantity = Math.min(MAX_ITEM_QUANTITY, quantity);
         setItems((prev) =>
             prev.map((cartItem) =>
-                cartItem.id === itemId ? { ...cartItem, quantity } : cartItem,
+                cartItem.id === itemId
+                    ? { ...cartItem, quantity: cappedQuantity }
+                    : cartItem,
             ),
         );
     }, []);
@@ -232,6 +256,7 @@ export function CartProvider({ children, slug }) {
         <CartContext.Provider
             value={{
                 items,
+                maxItemQuantity: MAX_ITEM_QUANTITY,
                 addItem,
                 addItemsBatch,
                 removeItem,
