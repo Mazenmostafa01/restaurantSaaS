@@ -6,6 +6,7 @@ use App\Http\Middleware\SetTenantContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -41,7 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum cookie-based SPA auth for API routes
         $middleware->statefulApi();
 
-        $middleware->redirectGuestsTo(fn ($request) => $request->is('api/*') ? null : route('login'));
+        $middleware->redirectGuestsTo(fn (Request $request) => match (true) {
+            $request->is('api/*') => null,
+            $request->routeIs('saas.*') => route('saas.login'),
+            default => route('login'),
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

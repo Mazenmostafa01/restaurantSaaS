@@ -20,6 +20,10 @@ class Restaurant extends Model
         'orders',
         'api',
         'up',
+        'employees',
+        'password',
+        'saas',
+        'restaurants',
     ];
 
     protected $fillable = [

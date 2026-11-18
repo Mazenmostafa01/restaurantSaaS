@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BusinessOwner;
 use App\Models\Customer;
 use App\Models\User;
 
@@ -47,6 +48,10 @@ return [
             'driver' => 'session',
             'provider' => 'customers',
         ],
+        'business_owner' => [
+            'driver' => 'session',
+            'provider' => 'business_owners',
+        ],
     ],
 
     /*
@@ -75,6 +80,11 @@ return [
         'customers' => [
             'driver' => 'eloquent',
             'model' => Customer::class,
+        ],
+
+        'business_owners' => [
+            'driver' => 'eloquent',
+            'model' => BusinessOwner::class,
         ],
     ],
 
