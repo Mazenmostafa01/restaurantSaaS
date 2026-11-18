@@ -631,4 +631,38 @@ class AdminRbacAndCleanArchitectureTest extends TestCase
         ])->assertStatus(422)
             ->assertJsonValidationErrors(['email', 'address']);
     }
+
+    public function test_multiple_clicks_with_same_idempotency_key_create_only_one_order(): void
+    {
+        $item = Item::create([
+            'name' => 'Shawarma Wrap',
+            'price' => 50.00,
+            'category' => 'food',
+            'restaurant_id' => $this->restaurant->id,
+        ]);
+
+        $createPage = $this->actingAs($this->adminUser)->get(route('orders.create'));
+        $createPage->assertOk();
+        $idempotencyKey = $createPage->viewData('idempotencyKey');
+        $this->assertIsString($idempotencyKey);
+        $this->assertNotEmpty($idempotencyKey);
+
+        $payload = [
+            'type' => 'take_away',
+            'idempotency_key' => $idempotencyKey,
+            'items' => [
+                $item->id => ['selected' => 'on', 'quantity' => 2],
+            ],
+            'note' => 'Counter walk-in customer',
+        ];
+
+        // Simulate 3 rapid clicks submitting the exact same POS form
+        $this->actingAs($this->adminUser)->post(route('orders.store'), $payload)->assertRedirect(route('orders.create'));
+        $this->actingAs($this->adminUser)->post(route('orders.store'), $payload)->assertRedirect(route('orders.create'));
+        $this->actingAs($this->adminUser)->post(route('orders.store'), $payload)->assertRedirect(route('orders.create'));
+
+        $orders = Order::where('note', 'Counter walk-in customer')->get();
+        $this->assertCount(1, $orders);
+        $this->assertSame(1, $orders->first()->daily_number);
+    }
 }

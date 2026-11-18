@@ -55,6 +55,7 @@ class OrderCreateRequest extends FormRequest
             'items.*.selected' => ['required', 'in:on'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'note' => ['nullable', 'string', 'max:255'],
+            'idempotency_key' => ['nullable', 'string', 'max:64'],
         ];
     }
 

@@ -21,7 +21,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -94,20 +96,36 @@ class OrderController extends Controller
         $categories = ItemCategoryEnum::cases();
         $orderType = OrderTypeEnum::cases();
         $posConfig = $this->buildPosConfig($items, 'Place Order');
+        $idempotencyKey = (string) Str::uuid();
 
-        return view('admin.orders.create', compact('items', 'categories', 'orderType', 'posConfig'));
+        return view('admin.orders.create', compact('items', 'categories', 'orderType', 'posConfig', 'idempotencyKey'));
     }
 
     public function store(OrderCreateRequest $request): RedirectResponse
     {
+        $idempotencyCacheKey = $this->resolveIdempotencyCacheKey($request);
+        if ($idempotencyCacheKey !== null && ! Cache::add($idempotencyCacheKey, true, now()->addMinutes(2))) {
+            return redirect()->route('orders.create');
+        }
+
+        $lock = Cache::lock($this->orderSubmitLockKey($request), 5);
+        if (! $lock->get()) {
+            return redirect()->route('orders.create');
+        }
+
         try {
             $this->orderService->createOrder(OrderWriteData::fromAdminRequest($request));
 
             return redirect()->route('orders.create');
         } catch (Exception $exception) {
+            if ($idempotencyCacheKey !== null) {
+                Cache::forget($idempotencyCacheKey);
+            }
             Log::error('order create error', ['exception' => $exception]);
 
             return back()->with('error', 'Failed to create order.');
+        } finally {
+            $lock->release();
         }
     }
 
@@ -277,5 +295,21 @@ class OrderController extends Controller
             'searchCustomersUrl' => route('orders.search-customers'),
             'quickCustomerUrl' => route('orders.quick-customer'),
         ];
+    }
+
+    private function resolveIdempotencyCacheKey(OrderCreateRequest $request): ?string
+    {
+        $rawKey = $request->validated('idempotency_key');
+        $key = is_string($rawKey) ? trim($rawKey) : '';
+        if ($key === '') {
+            return null;
+        }
+
+        return "order_idempotency:{$request->user()->restaurant_id}:{$request->user()->id}:{$key}";
+    }
+
+    private function orderSubmitLockKey(OrderCreateRequest $request): string
+    {
+        return "order_submit_lock:{$request->user()->restaurant_id}:{$request->user()->id}";
     }
 }

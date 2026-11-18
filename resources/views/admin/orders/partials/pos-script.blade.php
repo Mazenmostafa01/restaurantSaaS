@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const originalSavedTicket = Object.assign({}, config.originalSavedTicket || {});
     let ticket = Object.assign({}, config.initialTicket || {});
     const submitVerb = config.submitVerb || 'Place Order';
+    let isSubmitting = false;
 
     // ----------------------------------------------------
     // DOM Elements
@@ -434,6 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function addItemToTicket(id) {
+        if (isSubmitting) return;
         if (!ticket[id]) {
             ticket[id] = 1;
         } else {
@@ -443,6 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateItemQuantity(id, qty) {
+        if (isSubmitting) return;
         if (qty <= 0) {
             delete ticket[id];
         } else {
@@ -452,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function removeItemFromTicket(id) {
+        if (isSubmitting) return;
         delete ticket[id];
         renderTicket();
     }
@@ -459,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Reset button for Create mode (clear all items)
     if (clearTicketBtn) {
         clearTicketBtn.addEventListener('click', function () {
-            if (Object.keys(ticket).length === 0) return;
+            if (isSubmitting || Object.keys(ticket).length === 0) return;
             if (confirm('Clear all items from this ticket?')) {
                 ticket = {};
                 renderTicket();
@@ -470,6 +474,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Reset button for Edit mode (restore saved order items)
     if (resetOrderBtn) {
         resetOrderBtn.addEventListener('click', function () {
+            if (isSubmitting) return;
             if (confirm('Discard your changes and restore the saved order items?')) {
                 ticket = Object.assign({}, originalSavedTicket);
                 renderTicket();
@@ -550,8 +555,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (summarySubtotal) summarySubtotal.textContent = `EGP ${subtotal.toFixed(2)}`;
         if (summaryTax) summaryTax.textContent = `EGP ${tax.toFixed(2)}`;
         if (summaryTotal) summaryTotal.textContent = `EGP ${grandTotal.toFixed(2)}`;
-        if (submitBtnText) submitBtnText.textContent = `${submitVerb} • EGP ${grandTotal.toFixed(2)}`;
-        if (submitOrderBtn) submitOrderBtn.disabled = false;
+        if (!isSubmitting) {
+            if (submitBtnText) submitBtnText.textContent = `${submitVerb} • EGP ${grandTotal.toFixed(2)}`;
+            if (submitOrderBtn) submitOrderBtn.disabled = false;
+        }
     }
 
     function renderTicket() {
@@ -610,9 +617,36 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
 
+    function lockOrderSubmission() {
+        isSubmitting = true;
+        if (submitOrderBtn) {
+            submitOrderBtn.disabled = true;
+            submitOrderBtn.setAttribute('aria-busy', 'true');
+        }
+        if (submitBtnText) {
+            submitBtnText.textContent = 'Submitting...';
+        }
+    }
+
     orderForm?.addEventListener('submit', function (e) {
+        if (isSubmitting || Object.keys(ticket).length === 0) {
+            e.preventDefault();
+            return;
+        }
+
         if (!validateCustomerForDelivery()) {
             e.preventDefault();
+            return;
+        }
+
+        lockOrderSubmission();
+    });
+
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted && isSubmitting) {
+            isSubmitting = false;
+            submitOrderBtn?.removeAttribute('aria-busy');
+            renderTicket();
         }
     });
 
@@ -636,9 +670,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Press 'Ctrl + Enter' or 'Cmd + Enter' to submit order
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            if (submitOrderBtn && !submitOrderBtn.disabled) {
+            if (!isSubmitting && submitOrderBtn && !submitOrderBtn.disabled) {
                 e.preventDefault();
-                if (validateCustomerForDelivery()) {
+                if (typeof orderForm?.requestSubmit === 'function') {
+                    orderForm.requestSubmit();
+                } else if (validateCustomerForDelivery()) {
+                    lockOrderSubmission();
                     orderForm?.submit();
                 }
             }

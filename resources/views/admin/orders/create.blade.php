@@ -150,6 +150,7 @@
             <div class="lg:col-span-5 xl:col-span-4 sticky top-6">
                 <form method="POST" action="{{ route('orders.store') }}" id="orderForm" class="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col">
                     @csrf
+                    <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey ?? (string) \Illuminate\Support\Str::uuid() }}">
 
                     <!-- Ticket Header -->
                     <div class="bg-gray-900 text-white p-4 sm:p-5">
