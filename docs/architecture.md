@@ -180,13 +180,21 @@ orders
 ├── user_id (FK -> users.id, nullable)
 ├── customer_id (FK -> customers.id, nullable)
 ├── order_number (string)
-├── type (enum: dine_in, take_away, delivery)
-├── sub_total (decimal 10,2)
-├── tax (decimal 10,2)
-├── net (decimal 10,2)
+├── order_date (date, business timezone)
+├── daily_number (unsigned integer, unique per restaurant_id + order_date)
+├── type (enum: take_away, delivery)
+├── price (decimal 12,2)
+├── tax (decimal 12,2)
+├── net (decimal 12,2)
 ├── note (string 255, nullable)
 └── timestamps
 └── INDEX (restaurant_id, created_at)
+└── UNIQUE (restaurant_id, order_date, daily_number)
+
+order_daily_sequences
+├── restaurant_id (PK, FK -> restaurants.id, ON DELETE CASCADE)
+├── sequence_date (PK, date)
+└── last_number (unsigned integer)
 
 order_items
 ├── id (PK)

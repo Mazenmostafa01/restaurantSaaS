@@ -25,7 +25,11 @@
                     class="block w-full rounded-xl border-0 py-2.5 pl-9 pr-3 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50" />
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="date" name="date" value="{{ is_string(request('date')) ? request('date') : '' }}"
+                    aria-label="Filter by order date"
+                    class="rounded-xl border-0 py-2.5 px-3 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50" />
+
                 <select name="type" class="rounded-xl border-0 py-2.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-gray-900 bg-gray-50/50">
                     <option value="">All Types</option>
                     <option value="take_away" {{ is_string(request('type')) && request('type') === 'take_away' ? 'selected' : '' }}>Take Away</option>
@@ -36,7 +40,7 @@
                     Filter
                 </button>
 
-                @if(request()->hasAny(['q', 'type']))
+                @if(request()->hasAny(['q', 'type', 'date']))
                     <a href="{{ route('orders.index') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                         Reset
                     </a>
@@ -53,7 +57,12 @@
                 <div class="flex flex-grow flex-col p-5">
                     <div class="mb-3 flex items-start justify-between border-b border-gray-50 pb-3">
                         <div>
-                            <h3 class="truncate text-xl font-bold text-gray-800 tracking-tight">#{{ $order->order_number }}</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="truncate text-xl font-bold text-gray-800 tracking-tight">#{{ $order->order_number }}</h3>
+                                @if ($order->order_date)
+                                    <span class="text-xs font-medium text-gray-400">· {{ \Carbon\Carbon::parse($order->order_date)->format('d M') }}</span>
+                                @endif
+                            </div>
                             <p class="text-xs text-gray-500 font-medium mt-0.5">
                                 {{ $order->customer ? $order->customer->name : 'Walk-in Diner' }}
                             </p>

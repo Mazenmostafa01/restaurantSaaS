@@ -143,12 +143,10 @@ class ParsedOrderDtoTest extends TestCase
             userId: null,
             customerId: 77,
             type: 'take_away',
-            orderNumberPrefix: 'AI-'
         );
 
         $this->assertSame('take_away', $writeDto->type);
         $this->assertSame(77, $writeDto->customerId);
-        $this->assertSame('AI-', $writeDto->orderNumberPrefix);
         $this->assertSame([10 => 3], $writeDto->itemQuantities);
         $this->assertSame('hot please | Pizza: thin crust', $writeDto->note);
     }

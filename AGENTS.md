@@ -198,6 +198,12 @@ This is the convention in `AddItemRequest`, `UpdateItemRequest`,
    - Group bill splitting ("El-Shilla"): Attribute items to people if names are mentioned and build the `splits` dictionary.
 6. **Rate limiting**: All AI parsing endpoints must be protected by the `throttle:ai-order-parse` middleware (10 requests/minute).
 
+### Order numbering
+
+- **Never generate order numbers outside `OrderService` / `OrderSequenceService`.**
+- Orders receive a gap-free daily sequential `daily_number` (`1, 2, 3...`) per restaurant, resetting at midnight in `config('tenant.business_timezone')` (`Africa/Cairo` by default), stored alongside `order_date` (`Y-m-d`) and mirrored to `order_number` as a string.
+- `OrderSequenceService::ensureCounterRow()` is called before opening the order transaction, and `claimNext()` increments `order_daily_sequences` first inside `DB::transaction(..., attempts: 3)` to prevent InnoDB gap-lock and lock-upgrade deadlocks.
+
 ### Money
 
 - DB columns are `decimal` (e.g. `price`, `tax`, `net`).

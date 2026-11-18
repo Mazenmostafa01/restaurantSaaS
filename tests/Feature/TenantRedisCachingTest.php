@@ -190,11 +190,10 @@ class TenantRedisCachingTest extends TestCase
             userId: $this->admin->id,
             customerId: $customer->id,
             itemQuantities: [$item->id => 2],
-            orderNumberPrefix: 'RB-'
         ));
 
         $this->assertTrue(Cache::has($dashKey), 'Order creation should NOT invalidate dashboard cache; rely on TTL');
-        $this->assertStringStartsWith('RB-', $order->order_number);
+        $this->assertSame('1', $order->order_number);
 
         // Once TTL expires or cache is refreshed, new order data is visible
         Cache::forget($dashKey);

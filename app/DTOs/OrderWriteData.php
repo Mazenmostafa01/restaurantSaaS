@@ -16,7 +16,6 @@ readonly class OrderWriteData
         public ?string $note = null,
         public ?int $userId = null,
         public ?int $customerId = null,
-        public string $orderNumberPrefix = '',
     ) {}
 
     public static function fromAdminRequest(OrderCreateRequest $request): self
@@ -52,7 +51,6 @@ readonly class OrderWriteData
             note: $validated['note'] ?? null,
             userId: null,
             customerId: (int) $request->user()->id,
-            orderNumberPrefix: 'C-',
         );
     }
 
@@ -61,7 +59,6 @@ readonly class OrderWriteData
         ?int $userId = null,
         ?int $customerId = null,
         string $type = 'take_away',
-        string $orderNumberPrefix = 'AI-',
     ): self {
         $quantities = [];
 
@@ -76,7 +73,6 @@ readonly class OrderWriteData
             note: $parsedOrder->combinedKitchenNote(),
             userId: $userId,
             customerId: $customerId,
-            orderNumberPrefix: $orderNumberPrefix,
         );
     }
 }

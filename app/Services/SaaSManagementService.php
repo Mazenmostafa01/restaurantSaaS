@@ -263,6 +263,8 @@ class SaaSManagementService
                 Order::withoutGlobalScopes()->withTrashed()->whereIn('id', $orderIds)->forceDelete();
             });
 
+        DB::table('order_daily_sequences')->where('restaurant_id', $restaurantId)->delete();
+
         Item::withoutGlobalScopes()
             ->withTrashed()
             ->where('restaurant_id', $restaurantId)

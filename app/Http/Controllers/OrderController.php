@@ -11,7 +11,9 @@ use App\Http\Requests\QuickCustomerRequest;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
+use App\Services\OrderSequenceService;
 use App\Services\OrderService;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,13 +25,23 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly OrderService $orderService) {}
+    public function __construct(
+        private readonly OrderService $orderService,
+        private readonly OrderSequenceService $sequence,
+    ) {}
 
     public function index(Request $request): View
     {
         $query = Order::query()->with(['customer', 'user']);
-        $this->applyOrderFilters($query, $request);
-        $orders = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $isDailyOrdered = $this->applyOrderFilters($query, $request);
+
+        if ($isDailyOrdered) {
+            $query->orderByDesc('daily_number')->orderByDesc('id');
+        } else {
+            $query->orderByDesc('created_at')->orderByDesc('id');
+        }
+
+        $orders = $query->paginate(15)->withQueryString();
 
         return view('admin.orders.index', compact('orders'));
     }
@@ -143,23 +155,59 @@ class OrderController extends Controller
         }
     }
 
-    private function applyOrderFilters(Builder $query, Request $request): void
+    private function applyOrderFilters(Builder $query, Request $request): bool
     {
+        $validatedDate = $this->parseDateFilter($request->input('date'));
+        if ($validatedDate !== null) {
+            $query->where('order_date', $validatedDate);
+        }
+
+        $isDailyNumberSearch = false;
         $rawSearch = $request->input('q');
         if (is_string($rawSearch) && ($searchTerm = trim($rawSearch)) !== '') {
             $cleanSearch = ltrim($searchTerm, '#');
-            $query->where(function (Builder $q) use ($cleanSearch, $searchTerm): void {
-                $q->where('order_number', 'like', "{$cleanSearch}%")
-                    ->orWhereHas('customer', function (Builder $customerQuery) use ($searchTerm): void {
-                        $customerQuery->where('phone_number', 'like', "{$searchTerm}%");
-                    });
-            });
+
+            if (preg_match('/^[1-9]\d{0,5}$/', $cleanSearch) === 1) {
+                if ($validatedDate === null) {
+                    $query->where('order_date', $this->sequence->businessDate());
+                }
+                $query->where('daily_number', (int) $cleanSearch);
+                $isDailyNumberSearch = true;
+            } else {
+                $query->where(function (Builder $q) use ($cleanSearch, $searchTerm): void {
+                    $q->where('order_number', 'like', "{$cleanSearch}%")
+                        ->orWhereHas('customer', function (Builder $customerQuery) use ($searchTerm): void {
+                            $customerQuery->where('phone_number', 'like', "{$searchTerm}%");
+                        });
+                });
+            }
         }
 
         $rawType = $request->input('type');
         if (is_string($rawType) && $rawType !== '') {
             $query->where('type', $rawType);
         }
+
+        return $validatedDate !== null || $isDailyNumberSearch;
+    }
+
+    private function parseDateFilter(mixed $rawDate): ?string
+    {
+        if (! is_string($rawDate)) {
+            return null;
+        }
+
+        $trimmed = trim($rawDate);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmed) !== 1) {
+            return null;
+        }
+
+        $parsed = Carbon::createFromFormat('Y-m-d', $trimmed);
+        if ($parsed === false || $parsed->format('Y-m-d') !== $trimmed) {
+            return null;
+        }
+
+        return $trimmed;
     }
 
     /**

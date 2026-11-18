@@ -8,19 +8,36 @@ use App\Models\Order;
 use App\Traits\Calculation;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use LogicException;
 
 class OrderService
 {
     use Calculation;
 
+    public function __construct(
+        private readonly OrderSequenceService $sequence,
+        private readonly TenantContext $tenant,
+    ) {}
+
     public function createOrder(OrderWriteData $orderData): Order
     {
         $pricing = $this->calculatePricingAndPivot($orderData->itemQuantities);
 
-        return DB::transaction(function () use ($orderData, $pricing): Order {
+        $restaurantId = $this->tenant->id();
+        if ($restaurantId === null) {
+            throw new LogicException('Cannot create an order without an active tenant context.');
+        }
+
+        $orderDate = $this->sequence->businessDate();
+        $this->sequence->ensureCounterRow($restaurantId, $orderDate);
+
+        return DB::transaction(function () use ($orderData, $pricing, $restaurantId, $orderDate): Order {
+            $dailyNumber = $this->sequence->claimNext($restaurantId, $orderDate);
+
             $order = Order::create([
-                'order_number' => $this->generateUniqueOrderNumber($orderData->orderNumberPrefix),
+                'order_date' => $orderDate,
+                'daily_number' => $dailyNumber,
+                'order_number' => (string) $dailyNumber,
                 'price' => $pricing['subTotal'],
                 'tax' => $pricing['tax'],
                 'net' => $pricing['netTotal'],
@@ -33,7 +50,7 @@ class OrderService
             $order->items()->attach($pricing['pivotDetails']);
 
             return $order;
-        });
+        }, attempts: 3);
     }
 
     public function updateOrder(Order $order, OrderWriteData $orderData): Order
@@ -106,15 +123,5 @@ class OrderService
             'netTotal' => round($subTotal + $tax, 2),
             'pivotDetails' => $pivotDetails,
         ];
-    }
-
-    public function generateUniqueOrderNumber(string $prefix = ''): string
-    {
-        // Bypass of TenantScope is intentional: order_number uniqueness is checked globally across all orders.
-        do {
-            $candidate = $prefix.now()->format('ymd').'-'.Str::upper(Str::random(6));
-        } while (Order::withoutGlobalScopes()->where('order_number', $candidate)->exists());
-
-        return $candidate;
     }
 }
